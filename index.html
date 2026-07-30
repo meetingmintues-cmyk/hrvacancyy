@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vacancy Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#0F4C81;--secondary:#4F8EF7;--success:#22C55E;--warning:#F59E0B;--danger:#EF4444;--bg:#F8FAFC;--card:#FFFFFF;--ink:#0B2540;--ink-soft:#5A7085;--border:rgba(15,76,129,0.10);}
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(1100px 500px at 8% -10%, rgba(79,142,247,0.16), transparent 60%),radial-gradient(900px 500px at 100% 0%, rgba(15,76,129,0.10), transparent 55%),var(--bg);font-family:'Inter',sans-serif;color:var(--ink);min-height:100vh;}
+  .shell{display:flex;min-height:100vh;}
+  .sidebar{width:230px;flex-shrink:0;background:linear-gradient(180deg,#0F4C81,#0A3760);color:#EAF2FF;padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px;}
+  .brand .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#4F8EF7,#F59E0B);display:flex;align-items:center;justify-content:center;font-family:'Manrope';font-weight:800;font-size:14px;color:#08213A;}
+  .brand h1{font-family:'Manrope';font-size:14px;font-weight:800;margin:0;}
+  .brand p{margin:1px 0 0;font-size:10.5px;color:#9FC0EA;font-weight:500;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#C9DDF5;cursor:pointer;transition:.15s;border:1px solid transparent;}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;}
+  .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+  .nav-item.active{background:rgba(79,142,247,0.22);color:#fff;border-color:rgba(79,142,247,0.4);}
+  .nav-group{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#6E96C4;margin:14px 8px 4px;font-weight:700;}
+  .sidebar-foot{margin-top:auto;padding:12px 10px;font-size:10.5px;color:#7FA3D1;border-top:1px solid rgba(255,255,255,0.08);}
+  .main{flex:1;padding:22px 30px 60px;max-width:1440px;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:20px;}
+  .topbar h2{font-family:'Manrope';font-size:22px;font-weight:800;margin:0 0 4px;}
+  .topbar .sub{color:var(--ink-soft);font-size:13px;}
+  .status-pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--ink-soft);box-shadow:0 2px 10px rgba(15,76,129,0.05);}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22C55E;margin-right:2px;}
+  #refreshBtn{background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter';box-shadow:0 4px 14px rgba(15,76,129,0.25);}
+  #viewSheetBtn{background:#fff;color:var(--primary);border:1.5px solid var(--primary);padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter';}
+  #viewSheetBtn:hover{background:rgba(15,76,129,0.06);}
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 16px 14px;box-shadow:0 4px 20px rgba(15,76,129,0.06);display:flex;flex-direction:column;gap:8px;transition:.2s;}
+  .kpi-card:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(15,76,129,0.12);}
+  .kpi-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .kpi-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(15,76,129,0.08);color:var(--primary);}
+  .kpi-icon svg{width:16px;height:16px;}
+  .kpi-label{font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.4px;}
+  .kpi-value{font-family:'Manrope';font-size:25px;font-weight:800;line-height:1;}
+  .kpi-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;width:fit-content;}
+  .tag-good{background:rgba(34,197,94,0.12);color:#16833F;} .tag-warn{background:rgba(245,158,11,0.14);color:#9A6104;} .tag-bad{background:rgba(239,68,68,0.12);color:#B91C1C;} .tag-info{background:rgba(79,142,247,0.14);color:#0F4C81;}
+  .section{display:none;animation:fade .35s ease;} .section.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .section-title{font-family:'Manrope';font-size:16px;font-weight:800;margin:24px 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title .bar{width:4px;height:16px;background:var(--secondary);border-radius:3px;}
+  .grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;} .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:0 4px 18px rgba(15,76,129,0.05);}
+  .card h3{font-family:'Manrope';font-size:14px;font-weight:700;margin:0 0 2px;}
+  .card .card-sub{font-size:11.5px;color:var(--ink-soft);margin:0 0 14px;}
+  .insight-list{display:flex;flex-direction:column;gap:10px;}
+  .insight{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,rgba(79,142,247,0.06),rgba(79,142,247,0.02));border:1px solid rgba(79,142,247,0.14);font-size:12.5px;line-height:1.5;}
+  .insight.warn{background:linear-gradient(180deg,rgba(245,158,11,0.08),rgba(245,158,11,0.02));border-color:rgba(245,158,11,0.2);}
+  .insight.bad{background:linear-gradient(180deg,rgba(239,68,68,0.08),rgba(239,68,68,0.02));border-color:rgba(239,68,68,0.2);}
+  .insight.good{background:linear-gradient(180deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border-color:rgba(34,197,94,0.2);}
+  .insight .dot{width:7px;height:7px;border-radius:50%;background:var(--secondary);margin-top:5px;flex-shrink:0;}
+  .insight.warn .dot{background:var(--warning);} .insight.bad .dot{background:var(--danger);} .insight.good .dot{background:var(--success);}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;padding:9px 10px;background:rgba(15,76,129,0.04);color:var(--ink-soft);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;}
+  td{padding:8px 10px;border-bottom:1px solid rgba(15,76,129,0.06);}
+  tr:hover td{background:rgba(79,142,247,0.04);}
+  .table-scroll{max-height:480px;overflow:auto;border-radius:12px;border:1px solid var(--border);}
+  .heatmap-scroll{overflow-x:auto;}
+  .heatmap{border-collapse:separate;border-spacing:3px;font-size:11px;}
+  .heatmap td.branch-cell{font-weight:700;white-space:nowrap;position:sticky;left:0;background:var(--bg);padding:6px 10px;}
+  .hm-cell{width:64px;height:38px;text-align:center;border-radius:6px;font-weight:700;font-size:11px;padding:2px;}
+  .hm-cell.zero{background:rgba(15,76,129,0.03);color:#B9C6D3;font-weight:500;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-soft);margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;} .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-bar input[type=text]{padding:9px 14px;border-radius:10px;border:1px solid var(--border);font-size:12.5px;min-width:220px;background:var(--card);}
+  .pill-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;}
+  .filter-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;position:relative;}
+  .filter-dropdown-btn{background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .filter-dropdown-btn:hover{border-color:var(--secondary);}
+  .filter-panel{position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(15,76,129,0.15);padding:10px;width:260px;max-height:320px;overflow-y:auto;z-index:50;display:none;}
+  .filter-panel.open{display:block;}
+  .filter-panel label{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:12px;border-radius:6px;cursor:pointer;}
+  .filter-panel label:hover{background:rgba(79,142,247,0.08);}
+  .filter-panel-actions{display:flex;gap:8px;padding:6px 6px 8px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+  .filter-panel-actions button{font-size:11px;font-weight:700;background:none;border:none;color:var(--secondary);cursor:pointer;padding:0;}
+  .clear-filters-btn{background:#fff;color:var(--danger);border:1.5px solid rgba(239,68,68,0.4);padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;}
+  .clear-filters-btn:hover{background:rgba(239,68,68,0.06);}
+  .filter-chip-count{background:var(--secondary);color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:1px 7px;}
+  .dataset-switch{display:inline-flex;background:rgba(15,76,129,0.06);border-radius:999px;padding:4px;margin-bottom:16px;gap:2px;}
+  .dataset-switch button{border:none;background:transparent;padding:8px 20px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:.15s;}
+  .dataset-switch button.active{background:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(15,76,129,0.25);}
+  .dept-switch{display:flex;flex-direction:column;gap:4px;margin-bottom:18px;}
+  .dept-switch button{border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#C9DDF5;padding:9px 12px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;transition:.15s;}
+  .dept-switch button:hover{background:rgba(255,255,255,0.09);}
+  .dept-switch button.active{background:linear-gradient(90deg,#4F8EF7,#3B7DE8);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(79,142,247,0.35);}
+  .dq-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,rgba(79,142,247,0.12),rgba(79,142,247,0.03));border:1px solid rgba(79,142,247,0.3);color:#0F4C81;padding:10px 16px;border-radius:12px;font-size:12.5px;font-weight:600;margin-bottom:18px;}
+  @media (max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr);}.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+  .mobile-menu-btn{display:none;}
+
+  @media (max-width:820px){
+    body{overflow-x:hidden;}
+    .shell{position:relative;}
+    .mobile-menu-btn{
+      display:flex;align-items:center;justify-content:center;
+      position:fixed;top:14px;left:14px;z-index:60;
+      width:42px;height:42px;border-radius:12px;border:none;
+      background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(15,76,129,0.35);
+      cursor:pointer;
+    }
+    .mobile-menu-btn svg{width:20px;height:20px;}
+    .sidebar{
+      position:fixed;top:0;left:0;height:100vh;z-index:55;
+      width:80vw;max-width:290px;
+      transform:translateX(-105%);
+      transition:transform .25s ease;
+      box-shadow:0 0 40px rgba(0,0,0,0.35);
+      display:flex !important;
+    }
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-overlay{
+      display:none;position:fixed;inset:0;background:rgba(8,20,35,0.55);z-index:50;
+    }
+    .sidebar-overlay.open{display:block;}
+    .main{padding:70px 14px 50px;max-width:100%;}
+    .topbar{margin-bottom:14px;}
+    .topbar h2{font-size:18px;}
+    .topbar .sub{font-size:12px;}
+    .kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi-value{font-size:20px;}
+    .kpi-card{padding:12px 12px 10px;}
+    .grid-2,.grid-3{grid-template-columns:1fr;gap:12px;}
+    .card{padding:14px 14px;}
+    .dept-switch{flex-direction:row;flex-wrap:wrap;}
+    .dept-switch button{flex:1 1 auto;text-align:center;font-size:11.5px;padding:8px 10px;}
+    .dataset-switch{width:100%;overflow-x:auto;}
+    .filter-toolbar{gap:8px;}
+    .filter-dropdown-btn{font-size:11.5px;padding:7px 10px;}
+    .filter-panel{width:220px;max-width:80vw;}
+    .status-pill{font-size:10.5px;padding:6px 10px;}
+    #refreshBtn, #viewSheetBtn{font-size:11px;padding:7px 11px;}
+    .heatmap-scroll, .table-scroll{-webkit-overflow-scrolling:touch;}
+    .heatmap th, .heatmap td{white-space:nowrap;}
+    table{font-size:11px;}
+    th{font-size:9.5px;padding:7px 8px;}
+    td{padding:7px 8px;}
+    .section-title{font-size:14px;margin:18px 0 10px;}
+    .dq-banner{font-size:11.5px;padding:9px 12px;flex-wrap:wrap;}
+  }
+
+  @media (max-width:420px){
+    .kpi-grid{grid-template-columns:1fr 1fr;}
+    .kpi-value{font-size:18px;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+<button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar(false)"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="brand"><div class="mark">VI</div><div><h1>Vacancy Intelligence</h1><p>CEO / Management View</p></div></div>
+    <div class="nav-item active" data-target="companyOverview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg>Company Overview</div>
+    <div class="nav-group">Department Detail</div>
+    <div class="dept-switch" id="deptSwitch"></div>
+    <div class="nav-item" data-target="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Executive Summary</div>
+    <div class="nav-item" data-target="trend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg>Trend &amp; Velocity</div>
+    <div class="nav-item" data-target="aging"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>Aging &amp; Stalled</div>
+    <div class="nav-item" data-target="table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Log Book</div>
+    <div class="nav-item" data-target="tracking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Vacancy Tracking</div>
+    <div class="nav-item" data-target="critical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>Leadership Roles</div>
+    <div class="sidebar-foot"><span class="live-dot"></span>Live: Snapshot History tabs</div>
+  </div>
+
+  <div class="main">
+    <div class="dq-banner" id="deptDataNote" style="display:none;"></div>
+
+    <div class="dq-banner" id="diagBanner" style="background:linear-gradient(90deg,rgba(15,76,129,0.08),rgba(15,76,129,0.02));border-color:rgba(15,76,129,0.25);color:#0F4C81;font-family:monospace;font-size:11.5px;">
+      <span id="diagText">Diagnostics: not yet run.</span>
+    </div>
+
+    <div class="topbar">
+      <div><h2>Vacancy Intelligence Dashboard</h2><div class="sub">Open positions — Existing Workshops (28 branches) + Upcoming Workshops (9 branches launching)</div></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div class="status-pill" id="statusPill"><span class="live-dot"></span><span id="statusText">Real data — 09 Jul 2026</span></div>
+        <label class="status-pill" style="cursor:pointer;user-select:none;">
+          <input type="checkbox" id="autoRefreshToggle" checked style="margin:0;">
+          Auto-refresh (5 min)
+        </label>
+        <button id="refreshBtn">⟳ Refresh from Sheet</button>
+        <button id="viewSheetBtn">↗ View Google Sheet</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="section active" id="companyOverview">
+      <div class="kpi-grid" id="companyKpiGrid" style="margin-bottom:16px;"></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Open Vacancies by Department</h3>
+          <p class="card-sub">Company-wide split, latest data from each department</p>
+          <div style="height:320px;"><canvas id="companyDeptChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Executive Insights</h3>
+          <p class="card-sub">Auto-generated across all 5 departments</p>
+          <div class="insight-list" id="companyInsights"></div>
+        </div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Department Comparison</div>
+      <div class="card">
+        <p class="card-sub">Click a department name to jump straight to its detail pages</p>
+        <div class="table-scroll"><table id="companyCompareTable"></table></div>
+      </div>
+    </div>
+
+    <div class="section" id="overview">
+      <div id="overviewServiceContent">
+        <div class="grid-2">
+          <div class="card">
+            <h3>Company-wide Open Vacancies</h3>
+            <p class="card-sub">Existing + Upcoming combined, tracked daily</p>
+            <div style="height:340px;"><canvas id="combinedTrend"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Executive Insights</h3>
+            <p class="card-sub">Generated from both datasets</p>
+            <div class="insight-list" id="execInsights"></div>
+          </div>
+        </div>
+        <div class="section-title"><span class="bar"></span>Existing vs Upcoming Split</div>
+        <div class="grid-3">
+          <div class="card"><h3>Vacancy Split</h3><p class="card-sub">Existing vs Upcoming, latest date</p><div style="height:250px;"><canvas id="splitDonut"></canvas></div></div>
+          <div class="card"><h3>Top 5 Branches — Existing</h3><p class="card-sub">By open vacancy count</p><div style="height:250px;"><canvas id="top5Existing"></canvas></div></div>
+          <div class="card"><h3>Top 5 Branches — Upcoming</h3><p class="card-sub">By open vacancy count</p><div style="height:250px;"><canvas id="top5Upcoming"></canvas></div></div>
+        </div>
+      </div>
+      <div id="overviewFlatContent" style="display:none;">
+        <div class="kpi-grid" id="flatOverviewKpiGrid" style="margin-bottom:16px;"></div>
+        <div class="card">
+          <h3>Executive Insights</h3>
+          <div class="insight-list" id="flatOverviewInsights"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXISTING: TREND -->
+    <div class="section" id="trend">
+      <div id="trendServiceContent">
+      <div class="dataset-switch" id="trendSwitch"></div>
+      <div class="filter-toolbar" id="filterBar1"></div>
+      <div class="card"><h3 id="trendTitle">Total Open Vacancies Over Time</h3><div style="height:380px;"><canvas id="trendFull"></canvas></div></div>
+      <div class="section-title"><span class="bar"></span>Fill Velocity Leaderboard</div>
+      <div class="card"><p class="card-sub">Net vacancies filled per branch — latest vs the snapshot closest to 1 week earlier</p><div class="table-scroll"><table id="velocityTable"></table></div></div>
+      <div class="section-title"><span class="bar"></span>Role Difficulty</div>
+      <div class="grid-2">
+        <div class="card"><h3>Open Vacancies by Role (latest)</h3><div style="height:320px;"><canvas id="roleBar"></canvas></div></div>
+        <div class="card"><h3>Hardest Roles to Fill</h3><p class="card-sub">Net fill since previous log</p><div style="height:320px;"><canvas id="roleFill"></canvas></div></div>
+      </div>
+      </div>
+      <div id="trendFlatContent" style="display:none;">
+        <div class="dq-banner">ⓘ <b>Not available yet.</b> Trend requires daily snapshot history, which only exists for Service right now. Once this department starts logging dated snapshots (same as Service's 7pm trigger), this page will show its open-vacancy trend automatically.</div>
+      </div>
+    </div>
+
+    <div class="section" id="aging">
+      <div id="agingServiceContent">
+      <div class="dataset-switch" id="agingSwitch"></div>
+      <div class="filter-toolbar" id="filterBar2"></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 id="agingTitle">Vacancy Aging Heatmap</h3>
+          <p class="card-sub">Consecutive logged days each branch/role vacancy has stayed open</p>
+          <div class="heatmap-scroll" id="agingHeatmap"></div>
+          <div class="legend"><span><i style="background:rgba(239,68,68,0.15)"></i>New</span><span><i style="background:rgba(239,68,68,0.5)"></i>~1 week</span><span><i style="background:#EF4444"></i>Long-stuck</span></div>
+        </div>
+        <div class="card"><h3 id="stalledTitle">Stalled Vacancies</h3><p class="card-sub">Unchanged across every logged date</p><div class="table-scroll" style="max-height:460px;"><table id="stalledTable"></table></div></div>
+      </div>
+      </div>
+      <div id="agingFlatContent" style="display:none;">
+        <div class="card">
+          <h3>Urgency Heatmap — Location × Designation</h3>
+          <p class="card-sub">Real days open, calculated from each row's actual reported date. Darker = open longer.</p>
+          <div class="heatmap-scroll" id="flatUrgencyHeatmap"></div>
+          <div class="legend"><span><i style="background:rgba(239,68,68,0.15)"></i>New</span><span><i style="background:rgba(239,68,68,0.5)"></i>~1 week</span><span><i style="background:#EF4444"></i>Long-stuck</span></div>
+        </div>
+        <div class="section-title"><span class="bar"></span>Open Vacancies by Designation</div>
+        <div class="card">
+          <p class="card-sub">Vacancy count by location × designation — darker = more open positions</p>
+          <div class="heatmap-scroll" id="flatDesignationHeatmap"></div>
+          <div class="legend"><span><i style="background:rgba(15,76,129,0.15)"></i>Low count</span><span><i style="background:rgba(15,76,129,0.5)"></i>Medium</span><span><i style="background:#0F4C81"></i>High count</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="table">
+      <div id="tableServiceContent">
+      <div class="dataset-switch" id="tableSwitch"></div>
+      <div class="filter-toolbar" id="filterBar3"></div>
+      <div class="filter-bar"><input type="text" id="tableSearch" placeholder="Search branch or date..."></div>
+      <div class="table-scroll"><table id="fullTable"></table></div>
+      </div>
+      <div id="tableFlatContent" style="display:none;">
+        <div class="kpi-grid" id="flatTableKpiGrid" style="margin-bottom:16px;"></div>
+        <div class="filter-toolbar" id="flatFilterBar"></div>
+        <div class="card">
+          <h3>Full Vacancy List</h3>
+          <p class="card-sub">Sorted oldest reported first — real days open, calculated from the actual reported date on each row</p>
+          <div class="filter-bar"><input type="text" id="flatTableSearch" placeholder="Search designation or location..."></div>
+          <div class="table-scroll" style="max-height:560px;"><table id="flatTable"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="tracking">
+      <div id="trackingServiceContent">
+      <div class="dataset-switch" id="trackingSwitch"></div>
+      <div class="filter-toolbar" id="filterBarTracking"></div>
+      <div class="kpi-grid" id="trackingKpiGrid" style="margin-bottom:16px;"></div>
+      <div class="dq-banner" style="margin-bottom:16px;">
+        ⓘ <b>Fill order rule:</b> when a branch/role's count drops, the <b>oldest still-open vacancy is always the one marked Filled</b> — not the newest. Example: 3 Painter vacancies open (opened 3, 2, and 1 day ago) → count drops to 2 → the <b>3-day-old</b> one closes, the other two stay open unchanged. Grouped rows below let you verify this directly for any branch/role.
+      </div>
+      <div class="card">
+        <h3>Individual Vacancy Instances</h3>
+        <p class="card-sub">Every open position tracked as its own unit — not a daily total. Rows are grouped by branch + role, oldest opened first, so you can see the exact fill order for that group in one place.</p>
+        <div class="filter-bar"><input type="text" id="trackingSearch" placeholder="Search branch or role..."></div>
+        <div class="table-scroll" style="max-height:560px;"><table id="trackingTable"></table></div>
+      </div>
+      </div>
+      <div id="trackingFlatContent" style="display:none;">
+        <div class="dq-banner">ⓘ <b>Not available yet.</b> Individual vacancy tracking is reconstructed from repeated daily count snapshots, which don't exist for this department — its data is a flat reported-vacancy list instead. Each row already has a real reported date, though, which you can see on the Log Book and Aging pages.</div>
+      </div>
+    </div>
+
+    <!-- CRITICAL MANPOWER -->
+    <div class="section" id="critical">
+      <div id="criticalServiceContent">
+      <div class="kpi-grid" id="criticalKpiGrid" style="margin-bottom:16px;"></div>
+      <div class="filter-toolbar" id="criticalFilterBar"></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Critical Leadership Positions</h3>
+          <p class="card-sub">Status of senior / hard-to-fill roles</p>
+          <div class="table-scroll"><table id="criticalTable"></table></div>
+        </div>
+        <div class="card">
+          <h3>Insights</h3>
+          <div class="insight-list" id="criticalInsights"></div>
+        </div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Urgency — Days Pending per Position</div>
+      <div class="card">
+        <p class="card-sub">Longer bar = open longer, sorted most urgent first</p>
+        <div id="criticalUrgencyWrap" style="height:auto;"><canvas id="criticalUrgency"></canvas></div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Status Timeline per Position</div>
+      <div class="card">
+        <p class="card-sub">Status on each logged snapshot date — red = open, green = filled/closed</p>
+        <div class="heatmap-scroll" id="criticalTimelineGrid"></div>
+        <div class="legend"><span><i style="background:#EF4444"></i>Pending / open</span><span><i style="background:#F59E0B"></i>In progress</span><span><i style="background:#22C55E"></i>Filled / closed</span></div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Time to Fill</div>
+      <div class="card">
+        <p class="card-sub">How many logged snapshots each position took (or has taken so far) from first appearing to being filled</p>
+        <div class="table-scroll" style="max-height:400px;"><table id="criticalFillTime"></table></div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Full Log Book</div>
+      <div class="card">
+        <p class="card-sub">Every logged snapshot entry for the selected position(s), most recent first</p>
+        <div class="table-scroll" style="max-height:460px;"><table id="criticalLogBook"></table></div>
+      </div>
+      <div class="section-title"><span class="bar"></span>Status Breakdown Over Time</div>
+      <div class="card">
+        <p class="card-sub">Count of pending critical roles per logged date</p>
+        <div style="height:320px;"><canvas id="criticalTrend"></canvas></div>
+      </div>
+      </div>
+      <div id="criticalFlatContent" style="display:none;">
+        <div class="dq-banner">ⓘ <b>Not available yet.</b> This department doesn't have its own leadership/critical-manpower tab yet — only Service tracks leadership hiring right now. Add a "Critical Manpower" tab (same format as Service's) to this department's spreadsheet and this page will populate automatically.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const EXIST_ROLES = ["MS","BSM","SME","Mechanic","ServiceAdvisor","SATrainee","MechanicTrainee","Tinker","Painter","PainterTrainee","BSA","BSATrainee","Accessories"];
+const EXIST_LABELS = {MS:"MS",BSM:"BSM",SME:"SME",Mechanic:"Mechanic",ServiceAdvisor:"Service Advisor",SATrainee:"SA Trainee",MechanicTrainee:"Mechanic Trainee",Tinker:"Tinker",Painter:"Painter",PainterTrainee:"Painter Trainee",BSA:"BSA",BSATrainee:"BSA Trainee",Accessories:"Accessories"};
+const UPCOMING_ROLES = ["MS","CRM","BSM","SME","Mechanic","ServiceAdvisor","Tinker","Painter","PainterTrainee","BSA","BSATrainee"];
+const UPCOMING_LABELS = {MS:"MS",CRM:"CRM",BSM:"BSM",SME:"SME",Mechanic:"Mechanic",ServiceAdvisor:"Service Advisor",Tinker:"Tinker",Painter:"Painter",PainterTrainee:"Painter Trainee",BSA:"BSA",BSATrainee:"BSA Trainee"};
+
+const EXISTING_LOG = [{"date": "2026-07-08", "branch": "Malappuram", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 2, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 3, "Painter": 3, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 1}, {"date": "2026-07-08", "branch": "Tirur", "MS": 1, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Pattambi", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 2, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 2, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Perinthalmanna", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Manjeri", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Feroke", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Mannarkkad", "MS": 1, "BSM": 1, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Changaramkulam", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 2, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Koduvally", "MS": 1, "BSM": 0, "SME": 4, "Mechanic": 2, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Ottapalam", "MS": 0, "BSM": 1, "SME": 4, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Parappanangadi", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Morayur", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 1, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Valancheri", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Alathiyur", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Pandikkad", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Koppam", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Edavannappara", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Pooladikkunnu", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Nilambur", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Kuttiyadi", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Nadapuram", "MS": 1, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Kodakara", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Viyyur", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-08", "branch": "Kunnamkulam", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "NEXA CALICUT", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Kunnamkulam -Nexa", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Wadakkanchery", "MS": 0, "BSM": 1, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-08", "branch": "Ramnatukkara", "MS": 0, "BSM": 1, "SME": 4, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Malappuram", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 2, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 3, "Painter": 3, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 1}, {"date": "2026-07-09", "branch": "Tirur", "MS": 1, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Pattambi", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 2, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 2, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Perinthalmanna", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Manjeri", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Feroke", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Mannarkkad", "MS": 1, "BSM": 1, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Changaramkulam", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 2, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Koduvally", "MS": 1, "BSM": 0, "SME": 4, "Mechanic": 2, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Ottapalam", "MS": 0, "BSM": 1, "SME": 4, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Parappanangadi", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Morayur", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 1, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Valancheri", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Alathiyur", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 1, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Pandikkad", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Koppam", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 1, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Edavannappara", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Pooladikkunnu", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Nilambur", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Kuttiyadi", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Nadapuram", "MS": 1, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Kodakara", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Viyyur", "MS": 0, "BSM": 0, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 1, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1, "Accessories": 0}, {"date": "2026-07-09", "branch": "Kunnamkulam", "MS": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "NEXA CALICUT", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Kunnamkulam -Nexa", "MS": 0, "BSM": 0, "SME": 2, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Wadakkanchery", "MS": 0, "BSM": 1, "SME": 3, "Mechanic": 0, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0, "Accessories": 0}, {"date": "2026-07-09", "branch": "Ramnatukkara", "MS": 0, "BSM": 1, "SME": 4, "Mechanic": 1, "ServiceAdvisor": 0, "SATrainee": 0, "Tinker": 0, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0, "Accessories": 0}];
+const UPCOMING_LOG = [{"date": "2026-07-08", "branch": "Nexa Pattambi", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Vengara", "MS": 1, "CRM": 0, "BSM": 1, "SME": 4, "Mechanic": 2, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Nexa Malappuram", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 2, "ServiceAdvisor": 0, "Tinker": 2, "Painter": 0, "PainterTrainee": 1, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Ponnani", "MS": 0, "CRM": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Balussery", "MS": 1, "CRM": 0, "BSM": 0, "SME": 5, "Mechanic": 3, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 1, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Vadakkara", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 3, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-08", "branch": "Malappuram 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 2, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0}, {"date": "2026-07-08", "branch": "Perinthalmanna 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0}, {"date": "2026-07-08", "branch": "Nexa 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0}, {"date": "2026-07-09", "branch": "Nexa Pattambi", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Vengara", "MS": 1, "CRM": 0, "BSM": 1, "SME": 4, "Mechanic": 2, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 0, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Nexa Malappuram", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 2, "ServiceAdvisor": 0, "Tinker": 2, "Painter": 0, "PainterTrainee": 1, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Ponnani", "MS": 0, "CRM": 0, "BSM": 0, "SME": 1, "Mechanic": 0, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 0, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Balussery", "MS": 1, "CRM": 0, "BSM": 0, "SME": 5, "Mechanic": 3, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 1, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Vadakkara", "MS": 1, "CRM": 0, "BSM": 1, "SME": 3, "Mechanic": 3, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 1}, {"date": "2026-07-09", "branch": "Malappuram 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 2, "Painter": 2, "PainterTrainee": 0, "BSA": 1, "BSATrainee": 0}, {"date": "2026-07-09", "branch": "Perinthalmanna 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 0, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0}, {"date": "2026-07-09", "branch": "Nexa 2", "MS": 0, "CRM": 0, "BSM": 0, "SME": 0, "Mechanic": 1, "ServiceAdvisor": 1, "Tinker": 1, "Painter": 1, "PainterTrainee": 0, "BSA": 0, "BSATrainee": 0}];
+
+const ctxExisting = { key:"existing", roles:EXIST_ROLES, labels:EXIST_LABELS, log:EXISTING_LOG.slice(), prefix:"ex", selectedBranches:null, selectedRoles:null };
+const ctxUpcoming = { key:"upcoming", roles:UPCOMING_ROLES, labels:UPCOMING_LABELS, log:UPCOMING_LOG.slice(), prefix:"up", selectedBranches:null, selectedRoles:null };
+
+let charts = {};
+let ACTIVE_DATASET = 'existing';
+
+function setActiveDataset(key){
+  ACTIVE_DATASET = key;
+  renderDatasetPages();
+}
+
+function renderDatasetSwitch(containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = `
+    <button class="${ACTIVE_DATASET==='existing'?'active':''}" onclick="setActiveDataset('existing')">Existing Workshops</button>
+    <button class="${ACTIVE_DATASET==='upcoming'?'active':''}" onclick="setActiveDataset('upcoming')">Upcoming Workshops</button>
+  `;
+}
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQrUL8NtThnnZXEa5372UqTS9yyPFDj52ICpyB27ETqIDu8WdBjqUT1Ehb2PTNJ9LU/exec";
+const LIVE_PREFIX = "LIVE:";
+
+const EXIST_HEADER_MAP = {MS:"MS", BSM:"BSM", SME:"SME", Mechanic:"Mechanic", ServiceAdvisor:"Service Advisor", SATrainee:"SA Trainee", MechanicTrainee:"Mechanic Trainee", Tinker:"Tinker", Painter:"Painter", PainterTrainee:"Painter Trainee", BSA:"BSA", BSATrainee:"BSA Trainee", Accessories:"Accessories"};
+const UPCOMING_HEADER_MAP = {MS:"MS", CRM:"CRM", BSM:"BSM", SME:"SME", Mechanic:"Mechanic", ServiceAdvisor:"Service Advisor", Tinker:"Tinker", Painter:"Painter", PainterTrainee:"Painter Trainee", BSA:"BSA", BSATrainee:"BSA Trainee"};
+
+function normalizeDate(raw){
+  raw = (raw||"").toString().trim();
+  if(!raw) return null;
+  // Self-heal common typos: collapse doubled separators (e.g. "28//07/2026" -> "28/07/2026")
+  raw = raw.replace(/\/{2,}/g, '/').replace(/-{2,}/g, '-');
+  // DD/MM/YYYY HH:mm:ss  or  YYYY-MM-DD HH:mm:ss  (has a time component — keep it!)
+  let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')} ${m[4]}:${m[5]}:${m[6]}`;
+  m = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
+  // date-only formats (no time on the sheet) — fall back to midnight
+  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')} 00:00:00`;
+  m = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+  if(m){ const months={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'}; return `${m[3]}-${months[m[2]]}-${m[1].padStart(2,'0')} 00:00:00`; }
+  m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]} 00:00:00`;
+  // Nothing matched — this is genuinely unparseable. Return null (not the raw string) so
+  // callers can safely skip it instead of quietly turning into NaN everywhere downstream.
+  return null;
+}
+function toDateObj(d){ return d.startsWith(LIVE_PREFIX) ? new Date(d.slice(LIVE_PREFIX.length)) : new Date(d.replace(' ','T')); }
+function dateSortValue(d){ return toDateObj(d); }
+function formatDateLabel(d){
+  if(d.startsWith(LIVE_PREFIX)) return "Live • " + new Date(d.slice(LIVE_PREFIX.length)).toLocaleTimeString();
+  const dt = toDateObj(d);
+  if(isNaN(dt.getTime())) return d;
+  const hasTime = !d.endsWith("00:00:00");
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + (hasTime ? ' ' + dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '');
+}
+function hoursBetween(d1, d2){ return (d2 - d1) / 3600000; }
+function formatDateOnly(d){
+  if(d.startsWith(LIVE_PREFIX)) return "Live";
+  const dt = toDateObj(d);
+  if(isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+}
+function getDailyDates(ctx){
+  // one representative date per calendar day (the latest snapshot of that day) — for chart axes only.
+  // detailed per-hour data (heatmap, tracking, velocity) still uses the full-precision getDates().
+  const dates = getDates(ctx);
+  const byDay = {};
+  dates.forEach(d=>{
+    const key = d.startsWith(LIVE_PREFIX) ? 'LIVE' : d.slice(0,10);
+    byDay[key] = d; // dates is chronological, so the last write per day is the latest snapshot that day
+  });
+  return Object.values(byDay).sort((a,b)=>dateSortValue(a)-dateSortValue(b));
+}
+function formatDuration(hours){
+  if(hours < 1) return Math.round(hours*60) + 'm';
+  if(hours < 24) return Math.round(hours) + 'h';
+  const days = Math.round(hours/24);
+  return days + 'd';
+}
+
+
+function jsonpFetch(url, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cbName = "jsonp_cb_" + Date.now() + "_" + Math.floor(Math.random()*100000);
+    const script = document.createElement('script');
+    const cleanup = ()=>{ delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); };
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    script.onerror = ()=>{ cleanup(); reject(new Error("JSONP script load failed")); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&_=' + Date.now();
+    document.body.appendChild(script);
+    setTimeout(()=>{ if(window[cbName]){ cleanup(); reject(new Error("JSONP timed out")); } }, timeoutMs || 15000);
+  });
+}
+let CRITICAL_LOG = [];  // [{date, slNo, requirement, status}]
+let CRITICAL_CURRENT = []; // [{slNo, requirement, status}]
+let SALES_DATA = { arena: [], nexa: [], trueValue: [], otherVacancies: [] };
+
+function parseDMYShort(str){
+  const m = String(str||"").trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if(!m) return null;
+  const dd = +m[1], mm = +m[2];
+  let yyyy = +m[3];
+  if(yyyy < 100) yyyy = yyyy < 70 ? 2000+yyyy : 1900+yyyy;
+  const d = new Date(yyyy, mm-1, dd);
+  return isNaN(d.getTime()) ? null : d;
+}
+function parseDMonYY(str){
+  if(str instanceof Date) return isNaN(str.getTime()) ? null : str;
+  const raw = String(str||"").trim();
+  // ISO timestamp (e.g. "2026-07-12T18:30:00.000Z") — what Apps Script actually sends for real Date cells
+  let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if(m){
+    const d = new Date(raw);
+    if(isNaN(d.getTime())) return null;
+    // normalize to a plain calendar date (strip time/timezone) so day-counts don't shift by ±1
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  // "DD-Mon-YY" / "DD-Mon-YYYY" text format
+  m = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})/);
+  if(m){
+    const months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    const dd=+m[1], mon=months[m[2]]; let yyyy=+m[3];
+    if(mon===undefined) return null;
+    if(yyyy<100) yyyy = yyyy<70?2000+yyyy:1900+yyyy;
+    const d = new Date(yyyy, mon, dd);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+function findKey(row, candidates){
+  for(const c of candidates){ if(row[c]!==undefined) return c; }
+  const keys = Object.keys(row);
+  for(const k of keys){
+    for(const c of candidates){
+      if(k.toLowerCase().indexOf(c.toLowerCase().split(' ')[0]) !== -1) return k;
+    }
+  }
+  return null;
+}
+function parseSalesJSON(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.map(r=>{
+    const desigKey = findKey(r, ["Designation vacant","Designation"]);
+    const countKey = findKey(r, ["No. of vacancies","No of vacancies","Vacancies"]);
+    const locKey = findKey(r, ["Job location","Location"]);
+    const dateKey = findKey(r, ["Vacancy reported date","Reported date"]);
+    return {
+      designation: desigKey ? String(r[desigKey]||'').trim() : '',
+      count: countKey ? (Number(r[countKey])||0) : 0,
+      location: locKey ? String(r[locKey]||'').trim() : '',
+      reportedDateRaw: dateKey ? r[dateKey] : ''
+    };
+  }).filter(r=>r.designation);
+}
+function daysBetween(d1, d2){ return Math.round((d2 - d1) / 86400000); }
+
+function parseCriticalSnapshotJSON(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(r=>r["Requirement"] && r["snapshot Date"]).map(r=>({
+    date: normalizeDate(r["snapshot Date"]),
+    slNo: r["Sl No."],
+    requirement: String(r["Requirement"]),
+    status: String(r["Status"]||"Unknown").trim(),
+    startDateRaw: r["Recruting Start Date"] || r["Recruiting Start Date"] || ""
+  })).filter(r=>r.date);
+}
+function parseCriticalCurrentJSON(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(r=>r["Requirement"]).map(r=>({
+    slNo: r["Sl No."],
+    requirement: String(r["Requirement"]),
+    status: String(r["Status"]||"Unknown").trim(),
+    startDateRaw: r["Recruting Start Date"] || r["Recruiting Start Date"] || ""
+  }));
+}
+
+function parseSnapshotJSON(arr, roles, headerMap){
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(r=>r["Branch"] && !/^total$/i.test(String(r["Branch"]))).map(r=>{
+    const rec = {date: normalizeDate(r["Snapshot Date"]), branch: String(r["Branch"])};
+    roles.forEach(k=>{ rec[k] = Number(r[headerMap[k]])||0; });
+    return rec;
+  }).filter(r=>r.date); // drop rows with an unparseable Snapshot Date instead of poisoning downstream math
+}
+function parseCurrentJSON(arr, roles, headerMap){
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(r=>r["Branch"] && !/^total$/i.test(String(r["Branch"]))).map(r=>{
+    const rec = {branch: String(r["Branch"]), lastEdited: r["Last Edited"] || null};
+    roles.forEach(k=>{ rec[k] = Number(r[headerMap[k]])||0; });
+    return rec;
+  });
+}
+
+
+
+async function tryLiveFetch(){
+  const btn = document.getElementById('refreshBtn');
+  const statusText = document.getElementById('statusText');
+  const dot = document.querySelector('.status-pill .live-dot');
+  const diag = document.getElementById('diagText');
+  const now = new Date().toLocaleString();
+  btn.disabled = true; btn.textContent = "⟳ Fetching...";
+  diag.textContent = `[${now}] Fetching ${APPS_SCRIPT_URL} via JSONP...`;
+  try{
+    const data = await jsonpFetch(APPS_SCRIPT_URL);
+
+    const gotShape = data && typeof data === 'object';
+    diag.textContent = `[${now}] Response received. Keys: ${gotShape ? Object.keys(data).join(', ') : 'INVALID (not an object)'}. `
+      + `existingSnapshot rows: ${data && data.existingSnapshot ? data.existingSnapshot.length : 'missing'}, `
+      + `upcomingSnapshot rows: ${data && data.upcomingSnapshot ? data.upcomingSnapshot.length : 'missing'}, `
+      + `existingCurrent rows: ${data && data.existingCurrent ? data.existingCurrent.length : 'missing'}, `
+      + `upcomingCurrent rows: ${data && data.upcomingCurrent ? data.upcomingCurrent.length : 'missing'}. `
+      + `generatedAt: ${data && data.generatedAt ? data.generatedAt : 'missing'}.`;
+
+    const exSnap = parseSnapshotJSON(data.existingSnapshot, EXIST_ROLES, EXIST_HEADER_MAP);
+    const upSnap = parseSnapshotJSON(data.upcomingSnapshot, UPCOMING_ROLES, UPCOMING_HEADER_MAP);
+    const exCur = parseCurrentJSON(data.existingCurrent, EXIST_ROLES, EXIST_HEADER_MAP);
+    const upCur = parseCurrentJSON(data.upcomingCurrent, UPCOMING_ROLES, UPCOMING_HEADER_MAP);
+    const criticalSnap = parseCriticalSnapshotJSON(data.criticalSnapshot);
+    const criticalCur = parseCriticalCurrentJSON(data.criticalCurrent);
+    if(criticalSnap.length) CRITICAL_LOG = criticalSnap;
+    if(criticalCur.length) CRITICAL_CURRENT = criticalCur;
+
+    SALES_DATA.arena = parseSalesJSON(data.arena);
+    SALES_DATA.nexa = parseSalesJSON(data.nexa);
+    SALES_DATA.trueValue = parseSalesJSON(data.trueValue);
+    SALES_DATA.otherVacancies = parseSalesJSON(data.otherVacancies);
+
+    let anySuccess = false, gotLive = false;
+    if(exSnap.length>=2){ ctxExisting.log = exSnap; anySuccess = true; }
+    if(upSnap.length>=2){ ctxUpcoming.log = upSnap; anySuccess = true; }
+
+    const liveTag = LIVE_PREFIX + new Date().toISOString();
+    if(exCur.length){ ctxExisting.log = ctxExisting.log.filter(r=>!r.date.startsWith(LIVE_PREFIX)).concat(exCur.map(r=>({...r, date:liveTag}))); gotLive = true; }
+    if(upCur.length){ ctxUpcoming.log = ctxUpcoming.log.filter(r=>!r.date.startsWith(LIVE_PREFIX)).concat(upCur.map(r=>({...r, date:liveTag}))); gotLive = true; }
+
+    if(!anySuccess && !gotLive) throw new Error("Response parsed but produced 0 usable rows — check sheet tab order matches Snapshot-Existing, Snapshot-Upcoming, Existing current, Upcoming current, and that 'Branch' column header spelling matches exactly.");
+    diag.textContent += ` ✓ Parsed OK — existing log now ${ctxExisting.log.length} rows, upcoming log now ${ctxUpcoming.log.length} rows.`;
+    statusText.textContent = (gotLive ? "Live — includes current sheet edits — " : "Live snapshot data — ") + new Date().toLocaleTimeString();
+    dot.style.background = "#22C55E";
+    renderAll();
+    if(ACTIVE_DEPARTMENT !== 'service'){ renderFlatDepartment(document.getElementById('flatTableSearch') ? document.getElementById('flatTableSearch').value : ''); }
+    renderCompanyOverview();
+    diag.textContent = `[${now}] FAILED: ${e.message}`;
+    statusText.textContent = "Showing last verified data (" + e.message + ")";
+    dot.style.background = "#F59E0B";
+  }finally{
+    btn.disabled = false; btn.textContent = "⟳ Refresh from Sheet";
+  }
+}
+
+/* ============ CORE HELPERS (parameterized by ctx) ============ */
+function getFilteredLog(ctx){
+  if(!ctx.selectedBranches) return ctx.log;
+  return ctx.log.filter(r=>ctx.selectedBranches.has(r.branch));
+}
+function getFilteredRoles(ctx){
+  return ctx.selectedRoles ? ctx.roles.filter(k=>ctx.selectedRoles.has(k)) : ctx.roles;
+}
+function getDates(ctx){ return [...new Set(ctx.log.map(r=>r.date))].sort((a,b)=> dateSortValue(a) - dateSortValue(b)); }
+function rowsForDate(ctx, d){ return getFilteredLog(ctx).filter(r=>r.date===d); }
+function totalForRow(ctx, r){ return getFilteredRoles(ctx).reduce((s,k)=>s+(r[k]||0),0); }
+function companyTotalForDate(ctx, d){ return rowsForDate(ctx,d).reduce((s,r)=>s+totalForRow(ctx,r),0); }
+function branchMap(rows){ const m={}; rows.forEach(r=>m[r.branch]=r); return m; }
+
+function findWeekAgoDate(dates, latestDate){
+  // Picks whichever logged date is closest to exactly 7 days before latestDate —
+  // so Fill Velocity compares "now vs a week ago" instead of "now vs a few hours ago."
+  if(dates.length < 2) return null;
+  const targetMs = toDateObj(latestDate).getTime() - 7*24*3600*1000;
+  let best = null, bestDiff = Infinity;
+  dates.forEach(d=>{
+    if(d === latestDate) return;
+    const diff = Math.abs(toDateObj(d).getTime() - targetMs);
+    if(diff < bestDiff){ bestDiff = diff; best = d; }
+  });
+  return best;
+}
+
+function computeCore(ctx){
+  const dates = getDates(ctx);
+  const latest = dates[dates.length-1];
+  const prev = dates.length>1 ? findWeekAgoDate(dates, latest) : null;
+  const latestRows = rowsForDate(ctx, latest);
+  const latestMap = branchMap(latestRows);
+  const prevMap = prev ? branchMap(rowsForDate(ctx, prev)) : null;
+  const totalOpen = latestRows.reduce((s,r)=>s+totalForRow(ctx,r),0);
+  let filled=0, opened=0, movers=[];
+  if(prevMap){
+    Object.keys(latestMap).forEach(b=>{
+      const lt = totalForRow(ctx, latestMap[b]);
+      const pv = prevMap[b] ? totalForRow(ctx, prevMap[b]) : lt;
+      const delta = pv - lt;
+      movers.push({branch:b, delta, latest:lt, prev:pv});
+      if(delta>0) filled += delta; if(delta<0) opened += -delta;
+    });
+  }
+  movers.sort((a,b)=>b.delta-a.delta);
+  const roleTotalsLatest = {};
+  getFilteredRoles(ctx).forEach(k=>roleTotalsLatest[k] = latestRows.reduce((s,r)=>s+(r[k]||0),0));
+  const zeroVacancyBranches = latestRows.filter(r=>totalForRow(ctx,r)===0).length;
+  return {dates, latest, prev, latestRows, totalOpen, filled, opened, movers, roleTotalsLatest, zeroVacancyBranches};
+}
+
+function computeAging(ctx){
+  const dates = getDates(ctx);
+  const latest = dates[dates.length-1];
+  const byBranchRole = {};
+  getFilteredLog(ctx).forEach(r=>{
+    getFilteredRoles(ctx).forEach(k=>{
+      const key = r.branch+"||"+k;
+      if(!byBranchRole[key]) byBranchRole[key]={};
+      byBranchRole[key][r.date] = r[k]||0;
+    });
+  });
+  const results = [];
+  Object.entries(byBranchRole).forEach(([key, byDate])=>{
+    const [branch, role] = key.split("||");
+    const latestVal = byDate[latest]||0;
+    if(latestVal<=0) return; // only currently-open positions as of the latest logged date
+
+    // Walk back to find the start of the current continuous "open" streak
+    let age=0, streakStartIdx=dates.length-1;
+    for(let i=dates.length-1;i>=0;i--){
+      if((byDate[dates[i]]||0)>0){ age++; streakStartIdx=i; } else break;
+    }
+    const streakStartVal = byDate[dates[streakStartIdx]]||0;
+    const filled = Math.max(0, streakStartVal - latestVal);
+    const streakStartDt = toDateObj(dates[streakStartIdx]);
+    const latestDt = toDateObj(latest);
+    const hoursOpen = hoursBetween(streakStartDt, latestDt);
+    results.push({branch, role, value:latestVal, age, filled, asOf:latest, hoursOpen, durationLabel: formatDuration(hoursOpen)});
+  });
+  return results.sort((a,b)=>b.age-a.age);
+}
+
+function computeVacancyInstances(ctx){
+  const dates = getDates(ctx);
+  const branches = allBranchesFor(ctx).filter(b => !ctx.selectedBranches || ctx.selectedBranches.has(b));
+  const roles = getFilteredRoles(ctx);
+  const finalized = []; // filled instances, pushed as they close
+  const openMap = {};   // key -> array of {branch, role, openedDate}, oldest first
+
+  dates.forEach(d=>{
+    const rows = rowsForDate(ctx, d);
+    const rowMap = {};
+    rows.forEach(r=>{ rowMap[r.branch] = r; });
+    branches.forEach(b=>{
+      const row = rowMap[b];
+      roles.forEach(k=>{
+        const key = b+"||"+k;
+        if(!openMap[key]) openMap[key] = [];
+        const openList = openMap[key];
+        const count = row ? (row[k]||0) : 0;
+        const openCount = openList.length;
+        if(count > openCount){
+          const toAdd = count - openCount;
+          // If this row has a real "Last Edited" timestamp (from the onEdit trigger), use that as the
+          // true open moment instead of the live-fetch time — much more accurate than "whenever we happened to check."
+          let effectiveDate = d;
+          if(d.startsWith(LIVE_PREFIX) && row && row.lastEdited){
+            const normalized = normalizeDate(row.lastEdited);
+            if(normalized) effectiveDate = LIVE_PREFIX + toDateObj(normalized).toISOString();
+          }
+          for(let i=0;i<toAdd;i++) openList.push({branch:b, role:k, openedDate:effectiveDate});
+        } else if(count < openCount){
+          const toClose = openCount - count;
+          for(let i=0;i<toClose;i++){
+            const inst = openList.shift(); // oldest open instance closes first (FIFO)
+            finalized.push({...inst, filledDate:d, status:'filled'});
+          }
+        }
+      });
+    });
+  });
+
+  // whatever remains open at the end is still-open instances
+  const stillOpen = [];
+  Object.values(openMap).forEach(list=>{
+    list.forEach(inst=>stillOpen.push({...inst, filledDate:null, status:'open'}));
+  });
+
+  const all = [...finalized, ...stillOpen].map(inst=>{
+    const openDt = toDateObj(inst.openedDate);
+    if(inst.status==='filled'){
+      const filledDt = toDateObj(inst.filledDate);
+      const hours = hoursBetween(openDt, filledDt);
+      return {...inst, hours, daysLabel: formatDuration(hours)};
+    } else {
+      const latestDt = toDateObj(dates[dates.length-1]);
+      const hours = hoursBetween(openDt, latestDt);
+      return {...inst, hours, daysLabel: formatDuration(hours)};
+    }
+  });
+  return all.sort((a,b)=> dateSortValue(b.openedDate) - dateSortValue(a.openedDate));
+}
+
+function computeStalled(ctx){
+  const dates = getDates(ctx);
+  if(dates.length<2) return [];
+  const byBranchRole = {};
+  getFilteredLog(ctx).forEach(r=>{
+    getFilteredRoles(ctx).forEach(k=>{
+      const key = r.branch+"||"+k;
+      if(!byBranchRole[key]) byBranchRole[key]=[];
+      byBranchRole[key].push(r[k]||0);
+    });
+  });
+  const out = [];
+  Object.entries(byBranchRole).forEach(([key, vals])=>{
+    const [branch, role] = key.split("||");
+    if(vals.length===dates.length && vals[0]>0 && vals.every(v=>v===vals[0])) out.push({branch, role, value:vals[0], days:dates.length});
+  });
+  return out.sort((a,b)=>b.days-a.days);
+}
+
+/* ============ ICONS/KPI ============ */
+function icon(p){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p}</svg>`;}
+const ICONS = {
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
+  alert:'<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  branch:'<path d="M3 21h18"/><path d="M6 21V9l6-4 6 4v12"/><path d="M10 21v-6h4v6"/>',
+  trend:'<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+  award:'<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>',
+  build:'<path d="M14.7 6.3a4 4 0 0 1-5.6 5.6L4 17l3 3 5.1-5.1a4 4 0 0 1 5.6-5.6l-3-3Z"/>',
+};
+function updateKpiVisibility(targetId){
+  const globalKpi = document.getElementById('kpiGrid');
+  const hideOn = ['critical', 'tracking', 'companyOverview'];
+  const isFlatDept = typeof ACTIVE_DEPARTMENT !== 'undefined' && ACTIVE_DEPARTMENT !== 'service';
+  if(globalKpi) globalKpi.style.display = (isFlatDept || hideOn.includes(targetId)) ? 'none' : '';
+}
+
+function toggleMobileSidebar(forceOpen){
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if(!sidebar || !overlay) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', shouldOpen);
+  overlay.classList.toggle('open', shouldOpen);
+}
+
+function navigateTo(targetId){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-target="${targetId}"]`);
+  if(navItem) navItem.classList.add('active');
+  const section = document.getElementById(targetId);
+  if(section){ section.classList.add('active'); section.scrollIntoView({behavior:'smooth', block:'start'}); }
+  updateKpiVisibility(targetId);
+  if(window.innerWidth <= 820) toggleMobileSidebar(false);
+}
+
+function kpiCard(label, value, tag, tagClass, iconKey, navTarget, datasetKey){
+  const action = datasetKey ? `setActiveDataset('${datasetKey}'); navigateTo('${navTarget}');` : `navigateTo('${navTarget}')`;
+  const clickAttr = navTarget ? ` onclick="${action}" style="cursor:pointer;"` : "";
+  return `<div class="kpi-card"${clickAttr}><div class="kpi-top"><div class="kpi-icon">${icon(ICONS[iconKey])}</div>${tag?`<span class="kpi-tag ${tagClass}">${tag}</span>`:""}</div><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div></div>`;
+}
+
+function renderKPIs(cEx, cUp){
+  const el = document.getElementById('kpiGrid');
+  const combinedTotal = cEx.totalOpen + cUp.totalOpen;
+  const combinedFilled = cEx.filled + cUp.filled;
+  const combinedOpened = cEx.opened + cUp.opened;
+  const netMove = combinedFilled - combinedOpened;
+  el.innerHTML = [
+    kpiCard("Total Open Vacancies", combinedTotal, "Existing + Upcoming", "tag-info", "target", "overview"),
+    kpiCard("Existing Workshops", cEx.totalOpen, cEx.latestRows.length+" branches", "tag-info", "branch", "trend", "existing"),
+    kpiCard("Upcoming Workshops", cUp.totalOpen, cUp.latestRows.length+" launching", "tag-info", "build", "trend", "upcoming"),
+    kpiCard("Positions Filled", cEx.prev ? combinedFilled : "—", cEx.prev ? "since "+formatDateLabel(cEx.prev) : "need 2+ dates", combinedFilled>0?"tag-good":"tag-info", "check", "trend"),
+    kpiCard("New Vacancies Opened", cEx.prev ? combinedOpened : "—", cEx.prev ? "since "+formatDateLabel(cEx.prev) : "need 2+ dates", combinedOpened>0?"tag-bad":"tag-good", "alert", "aging"),
+    kpiCard("Net Movement", cEx.prev ? (netMove>=0?"+"+netMove:netMove) : "—", netMove>0?"Improving":netMove<0?"Worsening":"Flat (day 2)", netMove>0?"tag-good":netMove<0?"tag-bad":"tag-warn", "trend", "trend"),
+  ].join("");
+}
+
+function renderExecInsights(cEx, cUp){
+  const el = document.getElementById('execInsights');
+  const items = [];
+  items.push({cls:"", text:`Company-wide, <b>${cEx.totalOpen + cUp.totalOpen}</b> positions are currently open — <b>${cEx.totalOpen}</b> across your 28 running branches and <b>${cUp.totalOpen}</b> across the 9 branches being launched.`});
+  const exNet = cEx.filled - cEx.opened, upNet = cUp.filled - cUp.opened;
+  if(cEx.prev){
+    items.push({cls: exNet===0?"warn":exNet>0?"good":"bad", text: exNet===0 ? `Existing Workshops show <b>zero movement</b> between ${formatDateLabel(cEx.prev)} and ${formatDateLabel(cEx.latest)} — expected this early since tracking only just started; the next logged day is what will actually show hiring progress.` : `Existing Workshops net ${exNet>0?'improved':'worsened'} by <b>${Math.abs(exNet)}</b> since ${formatDateLabel(cEx.prev)}.`});
+  }
+  const topExisting = [...cEx.latestRows].sort((a,b)=>totalForRow(ctxExisting,b)-totalForRow(ctxExisting,a))[0];
+  if(topExisting) items.push({cls:"warn", text:`<b>${topExisting.branch}</b> carries the most open positions among running branches (<b>${totalForRow(ctxExisting,topExisting)}</b>).`});
+  const topUpcoming = [...cUp.latestRows].sort((a,b)=>totalForRow(ctxUpcoming,b)-totalForRow(ctxUpcoming,a))[0];
+  if(topUpcoming) items.push({cls:"info", text:`<b>${topUpcoming.branch}</b> is the most vacancy-heavy new launch (<b>${totalForRow(ctxUpcoming,topUpcoming)}</b> roles to fill before it can open fully staffed).`});
+  items.push({cls:"", text:`Upcoming Workshops naturally run near-100% vacant since they haven't opened yet — treat their trend as "pre-launch hiring progress," not a staffing problem, unlike Existing branches where any open role is a real gap.`});
+  el.innerHTML = items.map(i=>`<div class="insight ${i.cls}"><div class="dot"></div><div>${i.text}</div></div>`).join("");
+}
+
+/* ============ CHARTS ============ */
+function destroy(id){ if(charts[id]) charts[id].destroy(); }
+
+function renderCombinedTrend(){
+  destroy('combinedTrend');
+  const exDaily = getDailyDates(ctxExisting);
+  const upDaily = getDailyDates(ctxUpcoming);
+  const dayKey = d => d.startsWith(LIVE_PREFIX) ? 'LIVE' : d.slice(0,10);
+  const exByDay = {}; exDaily.forEach(d=>{ exByDay[dayKey(d)] = d; });
+  const upByDay = {}; upDaily.forEach(d=>{ upByDay[dayKey(d)] = d; });
+  const allDayKeys = [...new Set([...Object.keys(exByDay), ...Object.keys(upByDay)])]
+    .sort((a,b)=> dateSortValue(exByDay[a]||upByDay[a]) - dateSortValue(exByDay[b]||upByDay[b]));
+  const labels = allDayKeys.map(k=> k==='LIVE' ? 'Live' : formatDateOnly(exByDay[k]||upByDay[k]));
+  charts.combinedTrend = new Chart(document.getElementById('combinedTrend'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Existing', data:allDayKeys.map(k=> exByDay[k]!=null ? companyTotalForDate(ctxExisting, exByDay[k]) : null), borderColor:'#0F4C81', backgroundColor:'rgba(15,76,129,0.1)', fill:true, tension:.3, borderWidth:2.5, spanGaps:true},
+      {label:'Upcoming', data:allDayKeys.map(k=> upByDay[k]!=null ? companyTotalForDate(ctxUpcoming, upByDay[k]) : null), borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,0.1)', fill:true, tension:.3, borderWidth:2.5, spanGaps:true},
+    ]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:'#0F4C81', padding:10, cornerRadius:8}}, scales:{y:{beginAtZero:true, grid:{color:'rgba(15,76,129,0.06)'}}, x:{grid:{display:false}}}}
+  });
+}
+
+function renderSplitDonut(cEx, cUp){
+  destroy('splitDonut');
+  charts.splitDonut = new Chart(document.getElementById('splitDonut'), {
+    type:'doughnut',
+    data:{labels:['Existing Workshops','Upcoming Workshops'], datasets:[{data:[cEx.totalOpen, cUp.totalOpen], backgroundColor:['#0F4C81','#F59E0B'], borderWidth:2, borderColor:'#fff'}]},
+    options:{cutout:'62%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:10}}}}}
+  });
+}
+
+function renderTop5(ctx, canvasId, color){
+  destroy(canvasId);
+  const c = computeCore(ctx);
+  const sorted = [...c.latestRows].sort((a,b)=>totalForRow(ctx,b)-totalForRow(ctx,a)).slice(0,5);
+  charts[canvasId] = new Chart(document.getElementById(canvasId), {
+    type:'bar',
+    data:{labels:sorted.map(r=>r.branch), datasets:[{data:sorted.map(r=>totalForRow(ctx,r)), backgroundColor:color, borderRadius:6}]},
+    options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'rgba(15,76,129,0.06)'}}, y:{ticks:{font:{size:10}}}}}
+  });
+}
+
+function renderDatasetTrend(ctx){
+  const id = "trendFull";
+  destroy(id);
+  const label = ctx.key === 'existing' ? 'Existing Workshops' : 'Upcoming Workshops';
+  const titleEl = document.getElementById('trendTitle');
+  if(titleEl) titleEl.textContent = label + ' — Total Open Vacancies Over Time';
+  const dates = getDailyDates(ctx);
+  const data = dates.map(d=>companyTotalForDate(ctx,d));
+  charts[id] = new Chart(document.getElementById(id), {
+    type:'line',
+    data:{labels:dates.map(formatDateOnly), datasets:[{data, borderColor:'#0F4C81', backgroundColor:'rgba(79,142,247,0.12)', fill:true, tension:.3, pointBackgroundColor:'#4F8EF7', pointRadius:5, borderWidth:2.5}]},
+    options:{plugins:{legend:{display:false}, tooltip:{backgroundColor:'#0F4C81', padding:10, cornerRadius:8}}, scales:{y:{beginAtZero:true, grid:{color:'rgba(15,76,129,0.06)'}}, x:{grid:{display:false}}}}
+  });
+}
+
+function renderVelocityTable(ctx){
+  const c = computeCore(ctx);
+  const el = document.getElementById("velocityTable");
+  if(!c.prev){ el.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>Needs 2+ logged dates.</td></tr></tbody>'; return; }
+  let html = `<thead><tr><th>Rank</th><th>Branch</th><th>Open (${formatDateLabel(c.prev)})</th><th>Open (${formatDateLabel(c.latest)})</th><th>Net Filled</th></tr></thead><tbody>`;
+  c.movers.forEach((m,i)=>{
+    const tagClass = m.delta>0?'tag-good':m.delta<0?'tag-bad':'tag-warn';
+    html += `<tr><td>#${i+1}</td><td><b>${m.branch}</b></td><td>${m.prev}</td><td>${m.latest}</td><td><span class="kpi-tag ${tagClass}">${m.delta>0?'+':''}${m.delta}</span></td></tr>`;
+  });
+  html += '</tbody>'; el.innerHTML = html;
+}
+
+function renderRoleCharts(ctx){
+  const c = computeCore(ctx);
+  const barId = "roleBar", fillId = "roleFill";
+  destroy(barId);
+  const entries = Object.entries(c.roleTotalsLatest).sort((a,b)=>b[1]-a[1]);
+  charts[barId] = new Chart(document.getElementById(barId), {
+    type:'bar',
+    data:{labels:entries.map(([k])=>ctx.labels[k]), datasets:[{data:entries.map(([,v])=>v), backgroundColor:'#0F4C81', borderRadius:6}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(15,76,129,0.06)'}}}}
+  });
+  destroy(fillId);
+  if(c.prev){
+    const roleDelta = {};
+    getFilteredRoles(ctx).forEach(k=>{
+      const latestSum = c.latestRows.reduce((s,r)=>s+(r[k]||0),0);
+      const prevSum = rowsForDate(ctx, c.prev).reduce((s,r)=>s+(r[k]||0),0);
+      roleDelta[k] = prevSum - latestSum;
+    });
+    const entries2 = Object.entries(roleDelta).sort((a,b)=>a[1]-b[1]);
+    charts[fillId] = new Chart(document.getElementById(fillId), {
+      type:'bar',
+      data:{labels:entries2.map(([k])=>ctx.labels[k]), datasets:[{data:entries2.map(([,v])=>v), backgroundColor:entries2.map(([,v])=>v<0?'#EF4444':v>0?'#22C55E':'#94A3B8'), borderRadius:6}]},
+      options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'rgba(15,76,129,0.06)'}}}}
+    });
+  } else {
+    document.getElementById(fillId).parentElement.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">Needs 2+ logged dates.</p>';
+  }
+}
+
+function renderAgingHeatmap(ctx){
+  const label = ctx.key === 'existing' ? 'Existing' : 'Upcoming';
+  const titleEl = document.getElementById('agingTitle');
+  if(titleEl) titleEl.textContent = 'Vacancy Aging Heatmap — ' + label;
+  const stalledTitleEl = document.getElementById('stalledTitle');
+  if(stalledTitleEl) stalledTitleEl.textContent = 'Stalled Vacancies — ' + label;
+
+  const instances = computeVacancyInstances(ctx);
+  const el = document.getElementById("agingHeatmap");
+  const openInstances = instances.filter(i=>i.status==='open');
+  if(!openInstances.length){ el.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">No open vacancies to age.</p>'; return; }
+
+  const dates = getDates(ctx);
+  const asOfDate = dates[dates.length-1];
+
+  // Group open instances by branch+role, then into age cohorts within each cell
+  const byKey = {};
+  openInstances.forEach(i=>{
+    const key = i.branch+"||"+i.role;
+    if(!byKey[key]) byKey[key] = [];
+    byKey[key].push(i);
+  });
+  const filledByKey = {};
+  instances.filter(i=>i.status==='filled').forEach(i=>{
+    const key = i.branch+"||"+i.role;
+    if(!filledByKey[key]) filledByKey[key] = 0;
+    filledByKey[key]++;
+  });
+
+  const maxHours = Math.max(...openInstances.map(i=>i.hours));
+  const byBranch = {};
+  Object.entries(byKey).forEach(([key, list])=>{
+    const [branch, role] = key.split("||");
+    if(!byBranch[branch]) byBranch[branch] = {};
+    // group same-cell instances into cohorts by their duration label (so "3 open at 4d" + "1 open at 1d" show separately)
+    const cohortMap = {};
+    list.forEach(i=>{
+      if(!cohortMap[i.daysLabel]) cohortMap[i.daysLabel] = {label:i.daysLabel, count:0, hours:i.hours};
+      cohortMap[i.daysLabel].count++;
+    });
+    const cohorts = Object.values(cohortMap).sort((a,b)=>b.hours-a.hours);
+    byBranch[branch][role] = { cohorts, totalOpen:list.length, filled: filledByKey[key]||0, maxCohortHours: Math.max(...cohorts.map(c=>c.hours)) };
+  });
+
+  let html = `<p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;font-weight:600;">As of latest logged date: <span style="color:var(--primary);">${formatDateLabel(asOfDate)}</span> — each number is a separate group of vacancies opened at the same time; a branch/role with vacancies of different ages shows multiple groups in one cell</p>`;
+  html += '<table class="heatmap"><thead><tr><th>Branch</th>';
+  getFilteredRoles(ctx).forEach(k=>html+=`<th>${ctx.labels[k]}</th>`);
+  html += '</tr></thead><tbody>';
+  Object.keys(byBranch).sort((a,b)=>{
+    const maxA = Math.max(...Object.values(byBranch[a]).map(x=>x.maxCohortHours));
+    const maxB = Math.max(...Object.values(byBranch[b]).map(x=>x.maxCohortHours));
+    return maxB - maxA;
+  }).forEach(b=>{
+    html += `<tr><td class="branch-cell">${b}</td>`;
+    getFilteredRoles(ctx).forEach(k=>{
+      const cell = byBranch[b][k];
+      if(!cell){ html += `<td class="hm-cell zero">·</td>`; }
+      else {
+        const alpha = maxHours>0 ? 0.15+(cell.maxCohortHours/maxHours)*0.75 : 0.3;
+        const cohortLabel = cell.cohorts.length===1
+          ? `${cell.cohorts[0].count}o ${cell.cohorts[0].label}`
+          : cell.cohorts.map(c=>`${c.count}@${c.label}`).join('+');
+        const label = cohortLabel + (cell.filled>0 ? ` /${cell.filled}c` : '');
+        const tooltipParts = cell.cohorts.map(c=>`${c.count} opened ${c.label} ago`).join('; ');
+        const tooltip = `${cell.totalOpen} currently open — ${tooltipParts}` + (cell.filled>0 ? `. ${cell.filled} filled (from earlier instances at this branch/role) so far.` : '') + ' — click for full log';
+        const safeB = b.replace(/'/g,"\\'");
+        html += `<td class="hm-cell" style="background:rgba(239,68,68,${alpha});color:${alpha>0.55?'#fff':'#7A1E1E'};font-size:8.5px;line-height:1.2;cursor:pointer;" title="${tooltip}" onclick="drillIntoCell('${ctx.key}','${safeB}','${k}')">${label}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>'; el.innerHTML = html;
+}
+
+function drillIntoCell(datasetKey, branch, role){
+  const ctx = getCtxByKey(datasetKey);
+  ctx.selectedBranches = new Set([branch]);
+  ctx.selectedRoles = new Set([role]);
+  setActiveDataset(datasetKey);
+  navigateTo('tracking');
+}
+
+function renderStalledTable(ctx){
+  const stalled = computeStalled(ctx);
+  const el = document.getElementById("stalledTable");
+  if(!stalled.length){ el.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No fully-stalled combinations detected yet.</td></tr></tbody>'; return; }
+  let html = '<thead><tr><th>Branch</th><th>Role</th><th>Open</th><th>Unchanged for</th></tr></thead><tbody>';
+  stalled.forEach(s=>{ html += `<tr><td>${s.branch}</td><td>${ctx.labels[s.role]}</td><td><b>${s.value}</b></td><td><span class="kpi-tag tag-bad">${s.days} log(s)</span></td></tr>`; });
+  html += '</tbody>'; el.innerHTML = html;
+}
+
+function renderTracking(ctx, filterText=""){
+  const label = ctx.key === 'existing' ? 'Existing Workshops' : 'Upcoming Workshops';
+  const instances = computeVacancyInstances(ctx);
+  const filled = instances.filter(i=>i.status==='filled');
+  const open = instances.filter(i=>i.status==='open');
+  const avgFillHours = filled.length ? (filled.reduce((s,i)=>s+i.hours,0)/filled.length) : null;
+  const longestOpenHours = open.length ? Math.max(...open.map(i=>i.hours)) : 0;
+
+  const kpiEl = document.getElementById('trackingKpiGrid');
+  if(kpiEl){
+    kpiEl.innerHTML = [
+      kpiCard("Total Instances", instances.length, label, "tag-info", "target"),
+      kpiCard("Currently Open", open.length, "Individually tracked", open.length>0?"tag-bad":"tag-good", "alert"),
+      kpiCard("Filled", filled.length, instances.length? Math.round(filled.length/instances.length*100)+"% of instances":"—", "tag-good", "check"),
+      kpiCard("Avg Time to Fill", avgFillHours!=null?formatDuration(avgFillHours):"—", "Across filled instances", "tag-info", "clock"),
+      kpiCard("Longest Currently Open", longestOpenHours>0? formatDuration(longestOpenHours):"—", "Most urgent instance", longestOpenHours>0?"tag-bad":"tag-good", "trend"),
+    ].join("");
+  }
+
+  const f = filterText.toLowerCase();
+  const filtered = instances.filter(i=>i.branch.toLowerCase().includes(f) || ctx.labels[i.role].toLowerCase().includes(f));
+
+  const el = document.getElementById('trackingTable');
+  if(!filtered.length){
+    el.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No vacancy instances found for the current filters. Instances need at least 1 logged snapshot where the count was above zero.</td></tr></tbody>';
+    return;
+  }
+  let html = '<thead><tr><th>Branch</th><th>Role</th><th>Opened</th><th>Status</th><th>Filled</th><th>Duration</th></tr></thead><tbody>';
+  const grouped = filtered.slice().sort((a,b)=>{
+    const keyA = a.branch+"||"+ctx.labels[a.role], keyB = b.branch+"||"+ctx.labels[b.role];
+    if(keyA !== keyB) return keyA < keyB ? -1 : 1;
+    return toDateObj(a.openedDate) - toDateObj(b.openedDate); // oldest-opened first within each group
+  });
+  let lastKey = null;
+  grouped.forEach(i=>{
+    const groupKey = i.branch+"||"+i.role;
+    const isNewGroup = groupKey !== lastKey;
+    lastKey = groupKey;
+    const tagClass = i.status==='filled' ? 'tag-good' : (i.hours>=120 ? 'tag-bad' : i.hours>=48 ? 'tag-warn' : 'tag-info');
+    const statusLabel = i.status==='filled' ? `Filled` : `Open`;
+    const rowStyle = isNewGroup ? 'border-top:2px solid rgba(15,76,129,0.15);' : '';
+    html += `<tr style="${rowStyle}"><td><b>${i.branch}</b></td><td>${ctx.labels[i.role]}</td><td>${formatDateLabel(i.openedDate)}</td><td><span class="kpi-tag ${tagClass}">${statusLabel}</span></td><td>${i.filledDate ? formatDateLabel(i.filledDate) : '—'}</td><td><b>${i.daysLabel}</b></td></tr>`;
+  });
+  html += '</tbody>';
+  el.innerHTML = html;
+}
+
+function buildFullTable(ctx, filterText=""){
+  const el = document.getElementById("fullTable");
+  const f = filterText.toLowerCase();
+  const filtered = getFilteredLog(ctx).filter(r=>r.branch.toLowerCase().includes(f) || r.date.includes(f)).sort((a,b)=>a.date<b.date?1:-1);
+  let html = '<thead><tr><th>Date</th><th>Branch</th>';
+  getFilteredRoles(ctx).forEach(k=>html+=`<th>${ctx.labels[k]}</th>`);
+  html += '<th>Total</th></tr></thead><tbody>';
+  filtered.forEach(r=>{
+    html += `<tr><td>${formatDateLabel(r.date)}</td><td><b>${r.branch}</b></td>`;
+    getFilteredRoles(ctx).forEach(k=>html+=`<td>${r[k]||0}</td>`);
+    html += `<td class="pill-tag" style="background:rgba(15,76,129,0.08);color:#0F4C81;">${totalForRow(ctx,r)}</td></tr>`;
+  });
+  html += '</tbody>'; el.innerHTML = html;
+}
+
+/* ============ MASTER RENDER ============ */
+function renderAll(){
+  const cEx = computeCore(ctxExisting);
+  const cUp = computeCore(ctxUpcoming);
+  renderKPIs(cEx, cUp);
+  renderExecInsights(cEx, cUp);
+  renderCombinedTrend();
+  renderSplitDonut(cEx, cUp);
+  renderTop5(ctxExisting, 'top5Existing', '#0F4C81');
+  renderTop5(ctxUpcoming, 'top5Upcoming', '#F59E0B');
+  renderCritical();
+  renderDatasetPages();
+}
+
+function renderDatasetPages(){
+  const ctx = getCtxByKey(ACTIVE_DATASET);
+  renderDatasetSwitch('trendSwitch');
+  renderDatasetSwitch('agingSwitch');
+  renderDatasetSwitch('tableSwitch');
+  renderDatasetSwitch('trackingSwitch');
+  renderDatasetTrend(ctx);
+  renderVelocityTable(ctx);
+  renderRoleCharts(ctx);
+  renderAgingHeatmap(ctx);
+  renderStalledTable(ctx);
+  buildFullTable(ctx, document.getElementById('tableSearch').value);
+  renderTracking(ctx, document.getElementById('trackingSearch').value);
+  renderFilterBars(ctx);
+}
+
+function allBranchesFor(ctx){
+  return [...new Set(ctx.log.map(r=>r.branch))].sort();
+}
+
+function renderFilterBars(ctx){
+  const containerIds = ["filterBar1", "filterBar2", "filterBar3", "filterBarTracking"];
+  const branches = allBranchesFor(ctx);
+  const selected = ctx.selectedBranches;
+  const activeCount = selected ? selected.size : branches.length;
+  const isFiltered = !!selected;
+
+  const roles = ctx.roles;
+  const selectedRoles = ctx.selectedRoles;
+  const activeRoleCount = selectedRoles ? selectedRoles.size : roles.length;
+  const isRoleFiltered = !!selectedRoles;
+
+  containerIds.forEach((cid, idx)=>{
+    const el = document.getElementById(cid);
+    if(!el) return;
+    const panelId = cid + "_panel";
+    const rolePanelId = cid + "_rolepanel";
+    el.innerHTML = `
+      <div style="position:relative;">
+        <button class="filter-dropdown-btn" onclick="toggleFilterPanel('${panelId}')">
+          🏢 Branches <span class="filter-chip-count">${activeCount}/${branches.length}</span> ▾
+        </button>
+        <div class="filter-panel" id="${panelId}">
+          <div class="filter-panel-actions">
+            <button onclick="setBranchFilter('${ctx.key}', 'all')">Select all</button>
+            <button onclick="setBranchFilter('${ctx.key}', 'none')">Clear all</button>
+          </div>
+          ${branches.map(b=>`
+            <label>
+              <input type="checkbox" data-branch="${b.replace(/"/g,'&quot;')}" onchange="toggleBranch('${ctx.key}', this.dataset.branch, this.checked)" ${(!selected || selected.has(b)) ? 'checked' : ''}>
+              ${b}
+            </label>`).join('')}
+        </div>
+      </div>
+      <div style="position:relative;">
+        <button class="filter-dropdown-btn" onclick="toggleFilterPanel('${rolePanelId}')">
+          🔧 Roles <span class="filter-chip-count">${activeRoleCount}/${roles.length}</span> ▾
+        </button>
+        <div class="filter-panel" id="${rolePanelId}">
+          <div class="filter-panel-actions">
+            <button onclick="setRoleFilter('${ctx.key}', 'all')">Select all</button>
+            <button onclick="setRoleFilter('${ctx.key}', 'none')">Clear all</button>
+          </div>
+          ${roles.map(r=>`
+            <label>
+              <input type="checkbox" data-role="${r}" onchange="toggleRole('${ctx.key}', this.dataset.role, this.checked)" ${(!selectedRoles || selectedRoles.has(r)) ? 'checked' : ''}>
+              ${ctx.labels[r]}
+            </label>`).join('')}
+        </div>
+      </div>
+      ${(isFiltered || isRoleFiltered) ? `<button class="clear-filters-btn" onclick="setBranchFilter('${ctx.key}', 'all'); setRoleFilter('${ctx.key}', 'all');">✕ Clear filters</button>` : ''}
+    `;
+  });
+}
+
+function toggleRole(key, role, checked){
+  const ctx = getCtxByKey(key);
+  const all = ctx.roles;
+  if(!ctx.selectedRoles) ctx.selectedRoles = new Set(all);
+  if(checked) ctx.selectedRoles.add(role); else ctx.selectedRoles.delete(role);
+  if(ctx.selectedRoles.size === all.length) ctx.selectedRoles = null;
+  renderAll();
+}
+function setRoleFilter(key, mode){
+  const ctx = getCtxByKey(key);
+  if(mode === 'all') ctx.selectedRoles = null;
+  else if(mode === 'none') ctx.selectedRoles = new Set();
+  renderAll();
+}
+
+function toggleFilterPanel(panelId){
+  document.querySelectorAll('.filter-panel').forEach(p=>{ if(p.id!==panelId) p.classList.remove('open'); });
+  document.getElementById(panelId).classList.toggle('open');
+}
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.filter-toolbar')){
+    document.querySelectorAll('.filter-panel').forEach(p=>p.classList.remove('open'));
+  }
+});
+
+function toggleCriticalPosition(pos, checked){
+  const allRows = CRITICAL_CURRENT.length ? CRITICAL_CURRENT : CRITICAL_LOG;
+  const all = [...new Set(allRows.map(r=>r.requirement))];
+  if(!CRITICAL_SELECTED_POSITIONS) CRITICAL_SELECTED_POSITIONS = new Set(all);
+  if(checked) CRITICAL_SELECTED_POSITIONS.add(pos); else CRITICAL_SELECTED_POSITIONS.delete(pos);
+  if(CRITICAL_SELECTED_POSITIONS.size === all.length) CRITICAL_SELECTED_POSITIONS = null;
+  renderCritical();
+}
+function setCriticalPositionFilter(mode){
+  if(mode === 'all') CRITICAL_SELECTED_POSITIONS = null;
+  else if(mode === 'none') CRITICAL_SELECTED_POSITIONS = new Set();
+  renderCritical();
+}
+
+function getCtxByKey(key){ return key==='existing' ? ctxExisting : ctxUpcoming; }
+
+function toggleBranch(key, branch, checked){
+  const ctx = getCtxByKey(key);
+  const all = allBranchesFor(ctx);
+  if(!ctx.selectedBranches) ctx.selectedBranches = new Set(all);
+  if(checked) ctx.selectedBranches.add(branch); else ctx.selectedBranches.delete(branch);
+  if(ctx.selectedBranches.size === all.length) ctx.selectedBranches = null;
+  renderAll();
+}
+
+function setBranchFilter(key, mode){
+  const ctx = getCtxByKey(key);
+  if(mode === 'all') ctx.selectedBranches = null;
+  else if(mode === 'none') ctx.selectedBranches = new Set();
+  renderAll();
+}
+
+let CRITICAL_SELECTED_POSITIONS = null; // null = all
+
+function statusColor(status){
+  if(/filled|closed|complete/i.test(status)) return '#22C55E';
+  if(/progress|shortlist|interview/i.test(status)) return '#F59E0B';
+  return '#EF4444';
+}
+
+function renderCritical(){
+  // Use live current list if available, else fall back to latest snapshot date
+  let allRows = CRITICAL_CURRENT;
+  let asOf = "current sheet";
+  if(!allRows.length && CRITICAL_LOG.length){
+    const d = [...new Set(CRITICAL_LOG.map(r=>r.date))].sort((a,b)=>new Date(a)-new Date(b));
+    const latest = d[d.length-1];
+    allRows = CRITICAL_LOG.filter(r=>r.date===latest).map(r=>({slNo:r.slNo, requirement:r.requirement, status:r.status}));
+    asOf = latest;
+  }
+
+  const allPositions = [...new Set(allRows.map(r=>r.requirement))];
+  const rows = CRITICAL_SELECTED_POSITIONS ? allRows.filter(r=>CRITICAL_SELECTED_POSITIONS.has(r.requirement)) : allRows;
+
+  // Render filter bar
+  const filterEl = document.getElementById('criticalFilterBar');
+  if(filterEl){
+    const selected = CRITICAL_SELECTED_POSITIONS;
+    const activeCount = selected ? selected.size : allPositions.length;
+    const isFiltered = !!selected;
+    filterEl.innerHTML = `
+      <div style="position:relative;">
+        <button class="filter-dropdown-btn" onclick="toggleFilterPanel('criticalFilterPanel')">
+          🎯 Positions <span class="filter-chip-count">${activeCount}/${allPositions.length}</span> ▾
+        </button>
+        <div class="filter-panel" id="criticalFilterPanel">
+          <div class="filter-panel-actions">
+            <button onclick="setCriticalPositionFilter('all')">Select all</button>
+            <button onclick="setCriticalPositionFilter('none')">Clear all</button>
+          </div>
+          ${allPositions.map(p=>`
+            <label>
+              <input type="checkbox" data-pos="${p.replace(/"/g,'&quot;')}" onchange="toggleCriticalPosition(this.dataset.pos, this.checked)" ${(!selected || selected.has(p)) ? 'checked' : ''}>
+              ${p}
+            </label>`).join('')}
+        </div>
+      </div>
+      ${isFiltered ? `<button class="clear-filters-btn" onclick="setCriticalPositionFilter('all')">✕ Clear filters</button>` : ''}
+    `;
+  }
+
+  // Aging: consecutive logged dates a requirement has held a non-"Filled" status
+  const dates = [...new Set(CRITICAL_LOG.map(r=>r.date))].sort((a,b)=>new Date(a)-new Date(b));
+  function ageFor(requirement){
+    let age = 0;
+    for(let i=dates.length-1;i>=0;i--){
+      const rec = CRITICAL_LOG.find(r=>r.date===dates[i] && r.requirement===requirement);
+      if(rec && !/filled|closed|complete/i.test(rec.status)) age++;
+      else break;
+    }
+    return age;
+  }
+
+  // Real calendar days open, based on the actual Recruiting Start Date column (much more accurate than log count)
+  const today = new Date();
+  function realDaysOpenFor(row){
+    const startDate = parseDMYShort(row.startDateRaw);
+    if(!startDate) return null;
+    return daysBetween(startDate, today);
+  }
+  function formatStartDate(raw){
+    const d = parseDMYShort(raw);
+    return d ? d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : (raw || '—');
+  }
+
+  const tableEl = document.getElementById('criticalTable');
+  if(!rows.length){
+    tableEl.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No Critical Manpower data matches the current filter.</td></tr></tbody>';
+  } else {
+    let html = '<thead><tr><th>#</th><th>Requirement</th><th>Status</th><th>Recruiting Started</th><th>Days Open</th></tr></thead><tbody>';
+    rows.sort((a,b)=>{
+      const da = realDaysOpenFor(a), db = realDaysOpenFor(b);
+      return (db==null?-1:db) - (da==null?-1:da);
+    }).forEach(r=>{
+      const isFilled = /filled|closed|complete/i.test(r.status);
+      const tagClass = isFilled ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
+      const daysOpen = realDaysOpenFor(r);
+      const daysTag = daysOpen==null ? '—' : `<span class="kpi-tag ${daysOpen>=60?'tag-bad':daysOpen>=30?'tag-warn':'tag-info'}">${daysOpen} day(s)</span>`;
+      html += `<tr><td>${r.slNo||''}</td><td><b>${r.requirement}</b></td><td><span class="kpi-tag ${tagClass}" title="${r.status}">${r.status.length>40? r.status.slice(0,40)+'…' : r.status}</span></td><td>${formatStartDate(r.startDateRaw)}</td><td>${daysTag}</td></tr>`;
+    });
+    html += '</tbody>';
+    tableEl.innerHTML = html;
+  }
+
+  const pendingCount = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
+  const inProgressCount = rows.filter(r=>/progress|shortlist|interview/i.test(r.status)).length;
+  const filledCount = rows.filter(r=>/filled|closed|complete/i.test(r.status)).length;
+  const realAgesNow = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).map(r=>realDaysOpenFor(r)).filter(v=>v!=null);
+  const longestAge = realAgesNow.length ? Math.max(...realAgesNow) : 0;
+  const avgAge = realAgesNow.length ? (realAgesNow.reduce((a,b)=>a+b,0)/realAgesNow.length).toFixed(0) : 0;
+  const critKpiEl = document.getElementById('criticalKpiGrid');
+  if(critKpiEl){
+    critKpiEl.innerHTML = [
+      kpiCard("Total Positions", rows.length, allPositions.length+" tracked", "tag-info", "target"),
+      kpiCard("Open / Pending", pendingCount, pendingCount>0?"Needs attention":"All clear", pendingCount>0?"tag-bad":"tag-good", "alert"),
+      kpiCard("In Progress", inProgressCount, "Shortlist/interview stage", "tag-warn", "clock"),
+      kpiCard("Filled", filledCount, rows.length? Math.round(filledCount/rows.length*100)+"% closed":"—", "tag-good", "check"),
+      kpiCard("Longest Open", longestAge>0 ? longestAge+" days" : "—", "Since recruiting start date", longestAge>0?"tag-bad":"tag-good", "trend"),
+      kpiCard("Avg Days Open", avgAge>0?avgAge+" days":"—", "Real calendar days, pending roles", "tag-info", "clock"),
+    ].join("");
+  }
+
+  const insightsEl = document.getElementById('criticalInsights');
+  const items = [];
+  if(!rows.length){
+    items.push({cls:"warn", text:"No rows match the current position filter."});
+  } else {
+    items.push({cls: pendingCount>0?"bad":"good", text:`<b>${pendingCount}</b> of <b>${rows.length}</b> critical leadership positions shown are still open (as of ${asOf}).`});
+    const oldest = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).map(r=>({req:r.requirement, age:realDaysOpenFor(r)})).filter(r=>r.age!=null).sort((a,b)=>b.age-a.age)[0];
+    if(oldest && oldest.age>0) items.push({cls: oldest.age>=60?"bad":"warn", text:`Longest-open: <b>${oldest.req}</b>, open for <b>${oldest.age}</b> calendar day(s) since its recruiting start date.`});
+    const missingDates = rows.filter(r=>!/filled|closed|complete/i.test(r.status) && !parseDMYShort(r.startDateRaw));
+    if(missingDates.length) items.push({cls:"warn", text:`<b>${missingDates.length}</b> open position(s) have no valid Recruiting Start Date on file, so their real day-count can't be calculated: ${missingDates.map(r=>r.requirement).join(', ')}.`});
+    if(dates.length<2) items.push({cls:"", text:"Only one dated snapshot logged so far — the status timeline and log book will fill in as more days accumulate. Day-counts above use the real Recruiting Start Date column, so they're accurate from day one."});
+  }
+  insightsEl.innerHTML = items.map(i=>`<div class="insight ${i.cls}"><div class="dot"></div><div>${i.text}</div></div>`).join('');
+
+  // Urgency bar chart — one bar per pending position, length = real days open since recruiting start
+  destroy('criticalUrgency');
+  const pendingRows = rows.filter(r=>!/filled|closed|complete/i.test(r.status))
+    .map(r=>({req:r.requirement, age:realDaysOpenFor(r)}))
+    .filter(r=>r.age!=null)
+    .sort((a,b)=>b.age-a.age);
+  const urgencyCanvas = document.getElementById('criticalUrgency');
+  const urgencyWrap = document.getElementById('criticalUrgencyWrap');
+  if(pendingRows.length){
+    urgencyWrap.style.height = Math.max(120, pendingRows.length*36) + 'px';
+    charts.criticalUrgency = new Chart(urgencyCanvas, {
+      type:'bar',
+      data:{labels:pendingRows.map(r=>r.req), datasets:[{data:pendingRows.map(r=>r.age), backgroundColor: pendingRows.map(r=> r.age>=60 ? '#EF4444' : r.age>=30 ? '#F59E0B' : '#94A3B8'), borderRadius:6}]},
+      options:{indexAxis:'y', plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=> ctx.raw+' calendar day(s) since recruiting started'}}}, scales:{x:{beginAtZero:true, grid:{color:'rgba(15,76,129,0.06)'}, title:{display:true, text:'Days open (from Recruiting Start Date)'}}, y:{grid:{display:false}}}}
+    });
+  } else {
+    urgencyWrap.style.height = '80px';
+    urgencyWrap.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">No open positions with a valid Recruiting Start Date in the current filter.</p>';
+  }
+
+  // Timeline grid — position x date, colored by status
+  const timelineEl = document.getElementById('criticalTimelineGrid');
+  const positionsForTimeline = [...new Set(rows.map(r=>r.requirement))];
+  if(!dates.length || !positionsForTimeline.length){
+    timelineEl.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">Timeline will appear once 1+ snapshot dates are logged.</p>';
+  } else {
+    let html = '<table class="heatmap"><thead><tr><th>Position</th>';
+    dates.forEach(d=>html+=`<th>${formatDateLabel(d)}</th>`);
+    html += '</tr></thead><tbody>';
+    positionsForTimeline.forEach(pos=>{
+      html += `<tr><td class="branch-cell">${pos}</td>`;
+      dates.forEach(d=>{
+        const rec = CRITICAL_LOG.find(r=>r.date===d && r.requirement===pos);
+        if(!rec){ html += `<td class="hm-cell zero">·</td>`; }
+        else {
+          const color = statusColor(rec.status);
+          html += `<td class="hm-cell" style="background:${color};color:#fff;font-size:9px;" title="${rec.status}">${rec.status.slice(0,3)}</td>`;
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    timelineEl.innerHTML = html;
+  }
+
+  // Time to Fill — per position, chronological analysis
+  const fillTimeEl = document.getElementById('criticalFillTime');
+  if(!dates.length || !positionsForTimeline.length){
+    fillTimeEl.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>Needs at least one logged snapshot to compute.</td></tr></tbody>';
+  } else {
+    let html = '<thead><tr><th>Requirement</th><th>First Logged</th><th>Current Status</th><th>Result</th></tr></thead><tbody>';
+    positionsForTimeline.forEach(pos=>{
+      const history = dates.map(d => ({date:d, rec: CRITICAL_LOG.find(r=>r.date===d && r.requirement===pos)})).filter(h=>h.rec);
+      if(!history.length){ return; }
+      const firstEntry = history[0];
+      const fillEntry = history.find(h=>/filled|closed|complete/i.test(h.rec.status));
+      const currentStatus = history[history.length-1].rec.status;
+      let resultHtml;
+      if(fillEntry){
+        const daysToFill = history.findIndex(h=>h===fillEntry) + 1;
+        resultHtml = `<span class="kpi-tag tag-good">Filled in ${daysToFill} logged day(s)</span>`;
+      } else {
+        const daysPendingSoFar = history.length;
+        resultHtml = `<span class="kpi-tag tag-bad">Still open — ${daysPendingSoFar} logged day(s) so far</span>`;
+      }
+      html += `<tr><td><b>${pos}</b></td><td>${formatDateLabel(firstEntry.date)}</td><td>${currentStatus}</td><td>${resultHtml}</td></tr>`;
+    });
+    html += '</tbody>';
+    fillTimeEl.innerHTML = html;
+  }
+
+  // Full Log Book — every entry for filtered positions, most recent first
+  const logBookEl = document.getElementById('criticalLogBook');
+  const logRows = CRITICAL_LOG.filter(r=>!CRITICAL_SELECTED_POSITIONS || CRITICAL_SELECTED_POSITIONS.has(r.requirement))
+    .slice().sort((a,b)=> dateSortValue(b.date) - dateSortValue(a.date));
+  if(!logRows.length){
+    logBookEl.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No logged entries yet for the current filter.</td></tr></tbody>';
+  } else {
+    let html = '<thead><tr><th>Date</th><th>Requirement</th><th>Status</th></tr></thead><tbody>';
+    logRows.forEach(r=>{
+      const tagClass = /filled|closed|complete/i.test(r.status) ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
+      html += `<tr><td>${formatDateLabel(r.date)}</td><td>${r.requirement}</td><td><span class="kpi-tag ${tagClass}">${r.status}</span></td></tr>`;
+    });
+    html += '</tbody>';
+    logBookEl.innerHTML = html;
+  }
+
+  // Trend: pending count per logged date (rolled up to one point per calendar day)
+  destroy('criticalTrend');
+  if(dates.length){
+    const dayKeyFn = d => d.startsWith(LIVE_PREFIX) ? 'LIVE' : d.slice(0,10);
+    const byDay = {}; dates.forEach(d=>{ byDay[dayKeyFn(d)] = d; });
+    const dailyDates = Object.values(byDay).sort((a,b)=>dateSortValue(a)-dateSortValue(b));
+    const pendingPerDate = dailyDates.map(d=>{
+      const dayRows = CRITICAL_LOG.filter(r=>r.date===d && (!CRITICAL_SELECTED_POSITIONS || CRITICAL_SELECTED_POSITIONS.has(r.requirement)));
+      return dayRows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
+    });
+    charts.criticalTrend = new Chart(document.getElementById('criticalTrend'), {
+      type:'line',
+      data:{labels:dailyDates.map(formatDateOnly), datasets:[{data:pendingPerDate, borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,0.1)', fill:true, tension:.3, borderWidth:2.5, pointRadius:5}]},
+      options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'rgba(15,76,129,0.06)'}}, x:{grid:{display:false}}}}
+    });
+  }
+}
+
+const DEPARTMENT_LABELS = { service:'Service', arena:'Arena', nexa:'Nexa', trueValue:'True Value', otherVacancies:'Other Vacancies' };
+let ACTIVE_DEPARTMENT = 'service';
+let SALES_SELECTED_LOCATIONS = { arena:null, nexa:null, trueValue:null, otherVacancies:null };
+
+function getFlatDeptStats(dept){
+  const rows = SALES_DATA[dept] || [];
+  const today = new Date();
+  const withAge = rows.map(r=>{
+    const d = parseDMonYY(r.reportedDateRaw);
+    return {...r, daysOpen: d ? daysBetween(d, today) : null};
+  });
+  const total = withAge.reduce((s,r)=>s+r.count,0);
+  const validAges = withAge.filter(r=>r.daysOpen!=null);
+  const oldest = validAges.length ? Math.max(...validAges.map(r=>r.daysOpen)) : null;
+  const locations = new Set(withAge.map(r=>r.location)).size;
+  return {total, oldest, locations};
+}
+
+function getServiceStats(){
+  const cEx = computeCore(ctxExisting);
+  const cUp = computeCore(ctxUpcoming);
+  const total = cEx.totalOpen + cUp.totalOpen;
+  const exInstances = computeVacancyInstances(ctxExisting).filter(i=>i.status==='open');
+  const upInstances = computeVacancyInstances(ctxUpcoming).filter(i=>i.status==='open');
+  const allOpenHours = [...exInstances, ...upInstances].map(i=>i.hours);
+  const oldest = allOpenHours.length ? Math.round(Math.max(...allOpenHours)/24) : null;
+  const locations = new Set([...ctxExisting.log.map(r=>r.branch), ...ctxUpcoming.log.map(r=>r.branch)]).size;
+  return {total, oldest, locations};
+}
+
+function getCriticalOpenCount(){
+  let rows = CRITICAL_CURRENT;
+  if(!rows.length && CRITICAL_LOG.length){
+    const dts = [...new Set(CRITICAL_LOG.map(r=>r.date))].sort((a,b)=>new Date(a)-new Date(b));
+    const latest = dts[dts.length-1];
+    rows = CRITICAL_LOG.filter(r=>r.date===latest);
+  }
+  return rows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
+}
+
+function renderCompanyOverview(){
+  const service = getServiceStats();
+  const arena = getFlatDeptStats('arena');
+  const nexa = getFlatDeptStats('nexa');
+  const trueValue = getFlatDeptStats('trueValue');
+  const other = getFlatDeptStats('otherVacancies');
+  const criticalOpen = getCriticalOpenCount();
+
+  const deptStats = [
+    {key:'service', label:'Service', ...service},
+    {key:'arena', label:'Arena', ...arena},
+    {key:'nexa', label:'Nexa', ...nexa},
+    {key:'trueValue', label:'True Value', ...trueValue},
+    {key:'otherVacancies', label:'Other Vacancies', ...other},
+  ];
+  const grandTotal = deptStats.reduce((s,d)=>s+d.total,0);
+  const overallOldest = deptStats.filter(d=>d.oldest!=null).sort((a,b)=>b.oldest-a.oldest)[0];
+
+  const kpiEl = document.getElementById('companyKpiGrid');
+  if(kpiEl){
+    kpiEl.innerHTML = [
+      kpiCard("Total Open Positions", grandTotal, "All 5 departments", "tag-info", "target"),
+      kpiCard("Service", service.total, service.locations+" branches", "tag-info", "branch"),
+      kpiCard("Arena", arena.total, arena.locations+" locations", "tag-info", "build"),
+      kpiCard("Nexa", nexa.total, nexa.locations+" locations", "tag-info", "build"),
+      kpiCard("True Value", trueValue.total, trueValue.locations+" locations", "tag-info", "build"),
+      kpiCard("Critical Leadership Open", criticalOpen, "Service only, tracked separately", criticalOpen>0?"tag-bad":"tag-good", "alert"),
+    ].join("");
+  }
+
+  const insightsEl = document.getElementById('companyInsights');
+  if(insightsEl){
+    const items = [];
+    items.push({cls:"", text:`<b>${grandTotal}</b> total open positions across all 5 departments company-wide.`});
+    if(grandTotal>0){
+      const biggest = deptStats.reduce((a,b)=>b.total>a.total?b:a);
+      items.push({cls:"warn", text:`<b>${biggest.label}</b> carries the largest share of open positions (<b>${biggest.total}</b>, ${Math.round(biggest.total/grandTotal*100)}% of the company total).`});
+    }
+    if(overallOldest) items.push({cls: overallOldest.oldest>=60?"bad":"warn", text:`Longest-standing open positions are in <b>${overallOldest.label}</b>, open for up to <b>${overallOldest.oldest}</b> days.`});
+    if(criticalOpen>0) items.push({cls:"bad", text:`<b>${criticalOpen}</b> senior leadership position(s) remain open — see Service → Leadership Roles for detail.`});
+    items.push({cls:"", text:`Only Service currently has daily-tracked history (trend, aging, fill velocity); Arena, Nexa, True Value, and Other Vacancies track real reported dates but not yet daily snapshots.`});
+    insightsEl.innerHTML = items.map(i=>`<div class="insight ${i.cls}"><div class="dot"></div><div>${i.text}</div></div>`).join('');
+  }
+
+  destroy('companyDeptChart');
+  const chartEntries = deptStats.filter(d=>d.total>0);
+  if(chartEntries.length){
+    charts.companyDeptChart = new Chart(document.getElementById('companyDeptChart'), {
+      type:'doughnut',
+      data:{labels:chartEntries.map(d=>d.label), datasets:[{data:chartEntries.map(d=>d.total), backgroundColor:['#0F4C81','#4F8EF7','#F59E0B','#22C55E','#EF4444'], borderWidth:2, borderColor:'#fff'}]},
+      options:{cutout:'58%', plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5}}}}}
+    });
+  }
+
+  const tableEl = document.getElementById('companyCompareTable');
+  if(tableEl){
+    let html = '<thead><tr><th>Department</th><th>Open Positions</th><th>Locations</th><th>Oldest Open</th></tr></thead><tbody>';
+    deptStats.forEach(d=>{
+      const oldestLabel = d.oldest!=null ? `<span class="kpi-tag ${d.oldest>=60?'tag-bad':d.oldest>=30?'tag-warn':'tag-info'}">${d.oldest} days</span>` : '—';
+      const action = d.key === 'service' ? `navigateTo('overview')` : `setActiveDepartment('${d.key}'); navigateTo('overview');`;
+      html += `<tr style="cursor:pointer;" onclick="${action}"><td><b>${d.label}</b></td><td>${d.total}</td><td>${d.locations}</td><td>${oldestLabel}</td></tr>`;
+    });
+    html += '</tbody>';
+    tableEl.innerHTML = html;
+  }
+}
+
+function renderDeptSwitch(){
+  const el = document.getElementById('deptSwitch');
+  if(!el) return;
+  el.innerHTML = Object.keys(DEPARTMENT_LABELS).map(key =>
+    `<button class="${ACTIVE_DEPARTMENT===key?'active':''}" onclick="setActiveDepartment('${key}')">${DEPARTMENT_LABELS[key]}</button>`
+  ).join('');
+}
+
+function setActiveDepartment(dept){
+  ACTIVE_DEPARTMENT = dept;
+  updateDepartmentVisibility();
+  renderDeptSwitch();
+  if(dept === 'service'){
+    renderAll();
+  } else {
+    renderFlatDepartment(document.getElementById('flatTableSearch') ? document.getElementById('flatTableSearch').value : '');
+  }
+  renderCompanyOverview();
+  if(window.innerWidth <= 820) toggleMobileSidebar(false);
+}
+
+function updateDepartmentVisibility(){
+  const isService = ACTIVE_DEPARTMENT === 'service';
+  const pairs = [
+    ['overviewServiceContent','overviewFlatContent'],
+    ['trendServiceContent','trendFlatContent'],
+    ['agingServiceContent','agingFlatContent'],
+    ['tableServiceContent','tableFlatContent'],
+    ['trackingServiceContent','trackingFlatContent'],
+    ['criticalServiceContent','criticalFlatContent'],
+  ];
+  pairs.forEach(([svcId, flatId])=>{
+    const svcEl = document.getElementById(svcId), flatEl = document.getElementById(flatId);
+    if(svcEl) svcEl.style.display = isService ? '' : 'none';
+    if(flatEl) flatEl.style.display = isService ? 'none' : '';
+  });
+  updateKpiVisibility(document.querySelector('.section.active') ? document.querySelector('.section.active').id : 'overview');
+
+  const noteEl = document.getElementById('deptDataNote');
+  if(noteEl){
+    if(isService){
+      noteEl.style.display = 'none';
+    } else {
+      noteEl.style.display = '';
+      noteEl.innerHTML = `ⓘ Viewing <b>${DEPARTMENT_LABELS[ACTIVE_DEPARTMENT]}</b> — this department currently tracks vacancies as a flat reported list (no daily snapshots yet), so Executive Summary, Aging, and Log Book show real data; Trend, Vacancy Tracking, and Leadership Roles will activate once snapshot history / a leadership tab exist for this department.`;
+    }
+  }
+}
+
+function toggleSalesLocation(loc, checked){
+  const all = [...new Set((SALES_DATA[ACTIVE_DEPARTMENT]||[]).map(r=>r.location))];
+  if(!SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT]) SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT] = new Set(all);
+  const set = SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT];
+  if(checked) set.add(loc); else set.delete(loc);
+  if(set.size === all.length) SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT] = null;
+  renderFlatDepartment(document.getElementById('flatTableSearch') ? document.getElementById('flatTableSearch').value : '');
+}
+function setSalesLocationFilter(mode){
+  if(mode === 'all') SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT] = null;
+  else if(mode === 'none') SALES_SELECTED_LOCATIONS[ACTIVE_DEPARTMENT] = new Set();
+  renderFlatDepartment(document.getElementById('flatTableSearch') ? document.getElementById('flatTableSearch').value : '');
+}
+
+function renderFlatDepartment(filterText=""){
+  if(ACTIVE_DEPARTMENT === 'service') return; // service uses the rich renderAll() pipeline instead
+  const dept = ACTIVE_DEPARTMENT;
+  const today = new Date();
+  const rowsAllRaw = SALES_DATA[dept] || [];
+  const allLocations = [...new Set(rowsAllRaw.map(r=>r.location))].sort();
+  const selectedLocs = SALES_SELECTED_LOCATIONS[dept];
+
+  // Location slicer (shared filter bar, shown once, used by Log Book page)
+  const filterEl = document.getElementById('flatFilterBar');
+  if(filterEl){
+    const activeCount = selectedLocs ? selectedLocs.size : allLocations.length;
+    const isFiltered = !!selectedLocs;
+    filterEl.innerHTML = `
+      <div style="position:relative;">
+        <button class="filter-dropdown-btn" onclick="toggleFilterPanel('flatLocPanel')">
+          📍 Locations <span class="filter-chip-count">${activeCount}/${allLocations.length}</span> ▾
+        </button>
+        <div class="filter-panel" id="flatLocPanel">
+          <div class="filter-panel-actions">
+            <button onclick="setSalesLocationFilter('all')">Select all</button>
+            <button onclick="setSalesLocationFilter('none')">Clear all</button>
+          </div>
+          ${allLocations.map(l=>`
+            <label>
+              <input type="checkbox" data-loc="${l.replace(/"/g,'&quot;')}" onchange="toggleSalesLocation(this.dataset.loc, this.checked)" ${(!selectedLocs || selectedLocs.has(l)) ? 'checked' : ''}>
+              ${l}
+            </label>`).join('')}
+        </div>
+      </div>
+      ${isFiltered ? `<button class="clear-filters-btn" onclick="setSalesLocationFilter('all')">✕ Clear filters</button>` : ''}
+    `;
+  }
+
+  const rowsAll = selectedLocs ? rowsAllRaw.filter(r=>selectedLocs.has(r.location)) : rowsAllRaw;
+  const rowsWithAge = rowsAll.map(r=>{
+    const d = parseDMonYY(r.reportedDateRaw);
+    return {...r, reportedDate: d, daysOpen: d ? daysBetween(d, today) : null};
+  });
+
+  const totalOpen = rowsWithAge.reduce((s,r)=>s+r.count,0);
+  const distinctDesignations = new Set(rowsWithAge.map(r=>r.designation)).size;
+  const distinctLocations = new Set(rowsWithAge.map(r=>r.location)).size;
+  const validAges = rowsWithAge.filter(r=>r.daysOpen!=null);
+  const oldest = validAges.length ? validAges.reduce((a,b)=>b.daysOpen>a.daysOpen?b:a) : null;
+  const avgDays = validAges.length ? Math.round(validAges.reduce((s,r)=>s+r.daysOpen,0)/validAges.length) : 0;
+
+  // KPIs (Executive Summary page)
+  const kpiEl = document.getElementById('flatOverviewKpiGrid');
+  if(kpiEl){
+    kpiEl.innerHTML = [
+      kpiCard("Total Open Vacancies", totalOpen, DEPARTMENT_LABELS[dept], "tag-info", "target"),
+      kpiCard("Designations", distinctDesignations, "Distinct roles", "tag-info", "branch"),
+      kpiCard("Locations", distinctLocations, "Job locations", "tag-info", "build"),
+      kpiCard("Oldest Open", oldest ? oldest.daysOpen+" days" : "—", oldest ? oldest.designation+" @ "+oldest.location : "No dated rows", oldest && oldest.daysOpen>=60 ? "tag-bad" : "tag-warn", "trend"),
+      kpiCard("Avg Days Open", validAges.length? avgDays+" days":"—", "Across all rows with a date", "tag-info", "clock"),
+    ].join("");
+  }
+
+  // Insights (Executive Summary page)
+  const insightsEl = document.getElementById('flatOverviewInsights');
+  if(insightsEl){
+    const items = [];
+    if(!rowsAll.length){
+      items.push({cls:"warn", text:`No rows match the current filter for ${DEPARTMENT_LABELS[dept]}.`});
+    } else {
+      items.push({cls:"", text:`<b>${totalOpen}</b> open positions across <b>${distinctLocations}</b> location(s) and <b>${distinctDesignations}</b> designation(s) in ${DEPARTMENT_LABELS[dept]}.`});
+      if(oldest) items.push({cls: oldest.daysOpen>=60?"bad":"warn", text:`Longest-open: <b>${oldest.designation}</b> at <b>${oldest.location}</b> — reported <b>${oldest.daysOpen}</b> days ago.`});
+      const missingDates = rowsWithAge.filter(r=>!r.reportedDate).length;
+      if(missingDates) items.push({cls:"warn", text:`${missingDates} row(s) have no valid reported date, so their age can't be calculated.`});
+    }
+    insightsEl.innerHTML = items.map(i=>`<div class="insight ${i.cls}"><div class="dot"></div><div>${i.text}</div></div>`).join('');
+  }
+
+  // Urgency heatmap (Aging page) — Location x Designation, same visual language as Service's Aging heatmap
+  const heatEl = document.getElementById('flatUrgencyHeatmap');
+  if(heatEl){
+    if(!validAges.length){
+      heatEl.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">No rows with a valid reported date in the current filter.</p>';
+    } else {
+      const designations = [...new Set(validAges.map(r=>r.designation))].sort();
+      const maxDays = Math.max(...validAges.map(r=>r.daysOpen));
+      const grid = {};
+      validAges.forEach(r=>{
+        if(!grid[r.location]) grid[r.location] = {};
+        if(!grid[r.location][r.designation]) grid[r.location][r.designation] = {days:r.daysOpen, count:r.count};
+        else {
+          grid[r.location][r.designation].days = Math.max(grid[r.location][r.designation].days, r.daysOpen);
+          grid[r.location][r.designation].count += r.count;
+        }
+      });
+      const locationsSorted = Object.keys(grid).sort((a,b)=>{
+        const maxA = Math.max(...Object.values(grid[a]).map(x=>x.days), 0);
+        const maxB = Math.max(...Object.values(grid[b]).map(x=>x.days), 0);
+        return maxB - maxA;
+      });
+      let html = '<table class="heatmap"><thead><tr><th>Location</th>';
+      designations.forEach(d=>html+=`<th>${d}</th>`);
+      html += '</tr></thead><tbody>';
+      locationsSorted.forEach(loc=>{
+        html += `<tr><td class="branch-cell">${loc}</td>`;
+        designations.forEach(d=>{
+          const cell = grid[loc][d];
+          if(!cell){ html += `<td class="hm-cell zero">·</td>`; }
+          else {
+            const alpha = maxDays>0 ? 0.15+(cell.days/maxDays)*0.75 : 0.3;
+            const label = `${cell.count}x ${cell.days}d`;
+            html += `<td class="hm-cell" style="background:rgba(239,68,68,${alpha});color:${alpha>0.55?'#fff':'#7A1E1E'};font-size:9px;" title="${cell.count} open at ${loc}, oldest ${cell.days} day(s)">${label}</td>`;
+          }
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      heatEl.innerHTML = html;
+    }
+  }
+
+  // Designation breakdown heatmap (Aging page) — Location x Designation, colored by vacancy count
+  const desigHeatEl = document.getElementById('flatDesignationHeatmap');
+  if(desigHeatEl){
+    if(!rowsWithAge.length){
+      desigHeatEl.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">No rows in the current filter.</p>';
+    } else {
+      const designations = [...new Set(rowsWithAge.map(r=>r.designation))].sort();
+      const countGrid = {};
+      rowsWithAge.forEach(r=>{
+        if(!countGrid[r.location]) countGrid[r.location] = {};
+        countGrid[r.location][r.designation] = (countGrid[r.location][r.designation]||0) + r.count;
+      });
+      const maxCount = Math.max(...rowsWithAge.map(r=>r.count), 1);
+      const locationsSorted = Object.keys(countGrid).sort((a,b)=>{
+        const totalA = Object.values(countGrid[a]).reduce((s,v)=>s+v,0);
+        const totalB = Object.values(countGrid[b]).reduce((s,v)=>s+v,0);
+        return totalB - totalA;
+      });
+      let html = '<table class="heatmap"><thead><tr><th>Location</th>';
+      designations.forEach(d=>html+=`<th>${d}</th>`);
+      html += '</tr></thead><tbody>';
+      locationsSorted.forEach(loc=>{
+        html += `<tr><td class="branch-cell">${loc}</td>`;
+        designations.forEach(d=>{
+          const count = countGrid[loc][d];
+          if(!count){ html += `<td class="hm-cell zero">·</td>`; }
+          else {
+            const alpha = 0.15+(count/maxCount)*0.75;
+            html += `<td class="hm-cell" style="background:rgba(15,76,129,${alpha});color:${alpha>0.55?'#fff':'#0B2540'};" title="${count} open ${d} position(s) at ${loc}">${count}</td>`;
+          }
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      desigHeatEl.innerHTML = html;
+    }
+  }
+
+  // Table (Log Book page)
+  const f = filterText.toLowerCase();
+  const filtered = rowsWithAge.filter(r=>r.designation.toLowerCase().includes(f) || r.location.toLowerCase().includes(f))
+    .sort((a,b)=> (b.daysOpen==null?-1:b.daysOpen) - (a.daysOpen==null?-1:a.daysOpen));
+  const tableEl = document.getElementById('flatTable');
+  if(tableEl){
+    if(!filtered.length){
+      tableEl.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No rows match the current filter.</td></tr></tbody>';
+    } else {
+      let html = '<thead><tr><th>Designation</th><th>Location</th><th>Count</th><th>Reported</th><th>Days Open</th></tr></thead><tbody>';
+      filtered.forEach(r=>{
+        const tag = r.daysOpen==null ? '—' : `<span class="kpi-tag ${r.daysOpen>=60?'tag-bad':r.daysOpen>=30?'tag-warn':'tag-info'}">${r.daysOpen} day(s)</span>`;
+        html += `<tr><td><b>${r.designation}</b></td><td>${r.location}</td><td>${r.count}</td><td>${r.reportedDate ? r.reportedDate.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : (r.reportedDateRaw||'—')}</td><td>${tag}</td></tr>`;
+      });
+      html += '</tbody>';
+      tableEl.innerHTML = html;
+    }
+  }
+}
+
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    navigateTo(item.dataset.target);
+  });
+});
+document.getElementById('tableSearch').addEventListener('input', e=>buildFullTable(getCtxByKey(ACTIVE_DATASET), e.target.value));
+document.getElementById('trackingSearch').addEventListener('input', e=>renderTracking(getCtxByKey(ACTIVE_DATASET), e.target.value));
+document.getElementById('flatTableSearch').addEventListener('input', e=>renderFlatDepartment(e.target.value));
+document.getElementById('refreshBtn').addEventListener('click', tryLiveFetch);
+
+const SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1LrMWKdjoIPIPRmRZYk7KhMb_X1nn0qFCiNl3Q6QOQhI/edit?usp=sharing";
+document.getElementById('viewSheetBtn').addEventListener('click', ()=>{
+  window.open(SHEET_EDIT_URL, '_blank', 'noopener');
+});
+
+let autoRefreshTimer = null;
+function startAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(tryLiveFetch, 5*60*1000); // every 5 minutes
+}
+function stopAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = null;
+}
+document.getElementById('autoRefreshToggle').addEventListener('change', e=>{
+  if(e.target.checked) startAutoRefresh(); else stopAutoRefresh();
+});
+
+renderDeptSwitch();
+updateDepartmentVisibility();
+renderAll();
+renderCompanyOverview();
+tryLiveFetch();
+startAutoRefresh();
+</script>
+</body>
+</html>
