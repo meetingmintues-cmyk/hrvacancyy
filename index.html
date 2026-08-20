@@ -431,6 +431,11 @@
             <div style="height:280px;"><canvas id="singleOverviewTeamChart"></canvas></div>
           </div>
         </div>
+        <div class="section-title"><span class="bar"></span><span id="singleOverviewStatusTitle">Vacancy Status Detail</span></div>
+        <div class="card">
+          <p class="card-sub">Every open branch/role vacancy with its current status — In Progress shown first</p>
+          <div class="table-scroll" style="max-height:420px;"><table id="singleOverviewStatusTable"></table></div>
+        </div>
       </div>
     </div>
 
@@ -765,11 +770,13 @@ function parseFlatRowsRaw(arr, snapshotDateKey){
     const desigKey = findKey(r, ["Designation vacant","Designation"]);
     const countKey = findKey(r, ["No. of vacancies","No of vacancies","Vacancies"]);
     const locKey = findKey(r, ["Job location","Location","Department"]);
+    const statusKey = findKey(r, ["Vacancy-Status","Vacancy Status","Status"]);
     const snapKey = snapshotDateKey ? findKey(r, [snapshotDateKey]) : null;
     return {
       designation: desigKey ? String(r[desigKey]||'').trim() : '',
       count: countKey ? (Number(r[countKey])||0) : 0,
       location: locKey ? String(r[locKey]||'').trim() : '',
+      status: statusKey ? String(r[statusKey]||'').trim() : '',
       snapDateRaw: snapKey ? r[snapKey] : null
     };
   }).filter(r=>r.designation && r.location);
@@ -780,10 +787,11 @@ function flatRowsToRoleBranchRecords(rows, roles){
   rows.forEach(r=>{
     if(!byBranch[r.location]) byBranch[r.location] = {branch: r.location};
     byBranch[r.location][r.designation] = (byBranch[r.location][r.designation]||0) + r.count;
+    if(r.status) byBranch[r.location][r.designation+"_status"] = r.status;
   });
   return Object.values(byBranch).map(rec=>{
     const full = {branch: rec.branch};
-    roles.forEach(role=>{ full[role] = rec[role] || 0; });
+    roles.forEach(role=>{ full[role] = rec[role] || 0; full[role+"_status"] = rec[role+"_status"] || ''; });
     return full;
   });
 }
@@ -805,13 +813,14 @@ function applyFlatDataToRichCtx(ctx, currentArr, snapshotArr){
     if(!byDate[d]) byDate[d] = {};
     if(!byDate[d][r.location]) byDate[d][r.location] = {};
     byDate[d][r.location][r.designation] = (byDate[d][r.location][r.designation]||0) + r.count;
+    if(r.status) byDate[d][r.location][r.designation+"_status"] = r.status;
   });
   const snapLog = [];
   Object.keys(byDate).forEach(d=>{
     branches.forEach(b=>{
       const src = (byDate[d][b]) || {};
       const rec = {date:d, branch:b};
-      roles.forEach(role=>{ rec[role] = src[role]||0; });
+      roles.forEach(role=>{ rec[role] = src[role]||0; rec[role+"_status"] = src[role+"_status"]||''; });
       snapLog.push(rec);
     });
   });
@@ -846,12 +855,19 @@ function parseCriticalCurrentJSON(arr){
   }));
 }
 
+function findStatusKey(row, roleColName){
+  return findKey(row, [roleColName+" Status", roleColName+"-Status", roleColName+"Status"]);
+}
 function parseSnapshotJSON(arr, roles, headerMap, branchKey){
   branchKey = branchKey || "Branch";
   if(!Array.isArray(arr)) return [];
   return arr.filter(r=>r[branchKey] && !/^total$/i.test(String(r[branchKey]))).map(r=>{
     const rec = {date: normalizeDate(r["Snapshot Date"]), branch: String(r[branchKey])};
-    roles.forEach(k=>{ rec[k] = Number(r[headerMap[k]])||0; });
+    roles.forEach(k=>{
+      rec[k] = Number(r[headerMap[k]])||0;
+      const statusKey = findStatusKey(r, headerMap[k]);
+      rec[k+"_status"] = statusKey ? String(r[statusKey]||'').trim() : '';
+    });
     return rec;
   }).filter(r=>r.date); // drop rows with an unparseable Snapshot Date instead of poisoning downstream math
 }
@@ -860,7 +876,11 @@ function parseCurrentJSON(arr, roles, headerMap, branchKey){
   if(!Array.isArray(arr)) return [];
   return arr.filter(r=>r[branchKey] && !/^total$/i.test(String(r[branchKey]))).map(r=>{
     const rec = {branch: String(r[branchKey]), lastEdited: r["Last Edited"] || null};
-    roles.forEach(k=>{ rec[k] = Number(r[headerMap[k]])||0; });
+    roles.forEach(k=>{
+      rec[k] = Number(r[headerMap[k]])||0;
+      const statusKey = findStatusKey(r, headerMap[k]);
+      rec[k+"_status"] = statusKey ? String(r[statusKey]||'').trim() : '';
+    });
     return rec;
   });
 }
@@ -1410,7 +1430,14 @@ function renderTracking(ctx, filterText=""){
     el.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No vacancy instances found for the current filters. Instances need at least 1 logged snapshot where the count was above zero.</td></tr></tbody>';
     return;
   }
-  let html = '<thead><tr><th>Branch</th><th>Role</th><th>Opened</th><th>Status</th><th>Filled</th><th>Duration</th></tr></thead><tbody>';
+  const dates = getDates(ctx);
+  const latestDate = dates[dates.length-1];
+  function latestStatusFor(branch, role){
+    const row = [...ctx.log].reverse().find(r=>r.branch===branch && r.date<=latestDate);
+    return row ? (row[role+"_status"]||'') : '';
+  }
+  const hasStatusData = filtered.some(i=>latestStatusFor(i.branch, i.role));
+  let html = `<thead><tr><th>Branch</th><th>Role</th><th>Opened</th><th>Status</th><th>Filled</th><th>Duration</th>${hasStatusData?'<th>Notes</th>':''}</tr></thead><tbody>`;
   const grouped = filtered.slice().sort((a,b)=>{
     const keyA = a.branch+"||"+ctx.labels[a.role], keyB = b.branch+"||"+ctx.labels[b.role];
     if(keyA !== keyB) return keyA < keyB ? -1 : 1;
@@ -1424,7 +1451,12 @@ function renderTracking(ctx, filterText=""){
     const tagClass = i.status==='filled' ? 'tag-good' : (i.hours>=120 ? 'tag-bad' : i.hours>=48 ? 'tag-warn' : 'tag-info');
     const statusLabel = i.status==='filled' ? `Filled` : `Open`;
     const rowStyle = isNewGroup ? 'border-top:2px solid rgba(15,76,129,0.15);' : '';
-    html += `<tr style="${rowStyle}"><td><b>${i.branch}</b></td><td>${ctx.labels[i.role]}</td><td>${formatDateLabel(i.openedDate)}</td><td><span class="kpi-tag ${tagClass}">${statusLabel}</span></td><td>${i.filledDate ? formatDateLabel(i.filledDate) : '—'}</td><td><b>${i.daysLabel}</b></td></tr>`;
+    html += `<tr style="${rowStyle}"><td><b>${i.branch}</b></td><td>${ctx.labels[i.role]}</td><td>${formatDateLabel(i.openedDate)}</td><td><span class="kpi-tag ${tagClass}">${statusLabel}</span></td><td>${i.filledDate ? formatDateLabel(i.filledDate) : '—'}</td><td><b>${i.daysLabel}</b></td>`;
+    if(hasStatusData){
+      const note = i.status==='open' ? latestStatusFor(i.branch, i.role) : '';
+      html += `<td style="font-size:11px;color:#5A7085;max-width:200px;" title="${note}">${note.length>40?note.slice(0,40)+'…':(note||'—')}</td>`;
+    }
+    html += `</tr>`;
   });
   html += '</tbody>';
   el.innerHTML = html;
@@ -1434,13 +1466,22 @@ function buildFullTable(ctx, filterText=""){
   const el = document.getElementById("fullTable");
   const f = filterText.toLowerCase();
   const filtered = getFilteredLog(ctx).filter(r=>r.branch.toLowerCase().includes(f) || r.date.includes(f)).sort((a,b)=>a.date<b.date?1:-1);
+  const roles = getFilteredRoles(ctx);
+  const hasStatusData = filtered.some(r=>roles.some(k=>r[k+"_status"]));
   let html = '<thead><tr><th>Date</th><th>Branch</th>';
-  getFilteredRoles(ctx).forEach(k=>html+=`<th>${ctx.labels[k]}</th>`);
-  html += '<th>Total</th></tr></thead><tbody>';
+  roles.forEach(k=>html+=`<th>${ctx.labels[k]}</th>`);
+  html += '<th>Total</th>';
+  if(hasStatusData) html += '<th>Notes</th>';
+  html += '</tr></thead><tbody>';
   filtered.forEach(r=>{
     html += `<tr><td>${formatDateLabel(r.date)}</td><td><b>${r.branch}</b></td>`;
-    getFilteredRoles(ctx).forEach(k=>html+=`<td>${r[k]||0}</td>`);
-    html += `<td class="pill-tag" style="background:rgba(15,76,129,0.08);color:#0F4C81;">${totalForRow(ctx,r)}</td></tr>`;
+    roles.forEach(k=>html+=`<td>${r[k]||0}</td>`);
+    html += `<td class="pill-tag" style="background:rgba(15,76,129,0.08);color:#0F4C81;">${totalForRow(ctx,r)}</td>`;
+    if(hasStatusData){
+      const notes = roles.filter(k=>r[k+"_status"]).map(k=>`${ctx.labels[k]}: ${r[k+"_status"]}`).join(' • ');
+      html += `<td style="font-size:11px;color:#5A7085;max-width:220px;" title="${notes}">${notes.length>50 ? notes.slice(0,50)+'…' : (notes||'—')}</td>`;
+    }
+    html += '</tr>';
   });
   html += '</tbody>'; el.innerHTML = html;
 }
@@ -1794,17 +1835,34 @@ function renderSingleOverview(ctx){
   const c = computeCore(ctx);
   const label = DEPARTMENT_LABELS[ctx.key] || ctx.key;
   const bLabel = ctx.branchLabel || "Branch";
+  const roles = getFilteredRoles(ctx);
+
+  // Status breakdown — sum vacancy COUNTS (not just row count) into Pending / In Progress / Filled,
+  // using the real status text per role (same categorization logic as Critical Positions).
+  let pendingSum = 0, inProgressSum = 0, filledStatusSum = 0;
+  c.latestRows.forEach(r=>{
+    roles.forEach(k=>{
+      const cnt = r[k]||0;
+      if(cnt<=0) return;
+      const status = (r[k+"_status"]||'').trim();
+      if(/filled|closed|complete/i.test(status)) filledStatusSum += cnt;
+      else if(/progress|shortlist|interview|will join|planned/i.test(status)) inProgressSum += cnt;
+      else pendingSum += cnt;
+    });
+  });
+  const instances = computeVacancyInstances(ctx).filter(i=>i.status==='open');
+  const longestOpenHours = instances.length ? Math.max(...instances.map(i=>i.hours)) : 0;
+  const stalledCount = computeStalled(ctx).length;
 
   const kpiEl = document.getElementById('singleOverviewKpiGrid');
   if(kpiEl){
-    const netMove = c.prev ? (c.filled - c.opened) : null;
     kpiEl.innerHTML = [
       kpiCard("Total Open Vacancies", c.totalOpen, label, "tag-info", "target"),
-      kpiCard(bLabel+"s Tracked", c.latestRows.length, "As of latest snapshot", "tag-info", "branch"),
-      kpiCard("Fully Staffed "+bLabel+"s", c.zeroVacancyBranches, "Zero open vacancies", "tag-good", "check"),
-      kpiCard("Positions Filled", c.prev ? c.filled : "—", c.prev ? "since "+formatDateLabel(c.prev) : "need 2+ dates", c.filled>0?"tag-good":"tag-info", "check"),
-      kpiCard("New Vacancies Opened", c.prev ? c.opened : "—", c.prev ? "since "+formatDateLabel(c.prev) : "need 2+ dates", c.opened>0?"tag-bad":"tag-good", "alert"),
-      kpiCard("Net Movement", c.prev ? (netMove>=0?"+"+netMove:netMove) : "—", netMove>0?"Improving":netMove<0?"Worsening":"Flat", netMove>0?"tag-good":netMove<0?"tag-bad":"tag-warn", "trend"),
+      kpiCard("Open / Pending", pendingSum, pendingSum>0?"Needs attention":"All clear", pendingSum>0?"tag-bad":"tag-good", "alert"),
+      kpiCard("In Progress", inProgressSum, inProgressSum>0?"Shortlist/interview stage":"None active", inProgressSum>0?"tag-warn":"tag-good", "clock"),
+      kpiCard("Filled (Status)", filledStatusSum, c.totalOpen? Math.round(filledStatusSum/(c.totalOpen||1)*100)+"% closed":"—", "tag-good", "check"),
+      kpiCard("Longest Open", longestOpenHours>0? formatDuration(longestOpenHours):"—", "Most urgent instance", longestOpenHours>0?"tag-bad":"tag-good", "trend", "tracking"),
+      kpiCard("Not Moved", stalledCount, "Unchanged across all logs", stalledCount>0?"tag-bad":"tag-good", "trend", "aging"),
     ].join("");
   }
 
@@ -1854,6 +1912,36 @@ function renderSingleOverview(ctx){
   }
 
   renderTop5(ctx, 'singleOverviewTeamChart', '#4F8EF7');
+
+  const statusTitleEl = document.getElementById('singleOverviewStatusTitle');
+  if(statusTitleEl) statusTitleEl.textContent = bLabel + " / Role Status Detail";
+  const statusRows = [];
+  c.latestRows.forEach(r=>{
+    roles.forEach(k=>{
+      const cnt = r[k]||0;
+      if(cnt<=0) return;
+      const status = (r[k+"_status"]||'').trim();
+      let bucket, tagClass, displayStatus;
+      if(/filled|closed|complete/i.test(status)){ bucket=2; tagClass='tag-good'; displayStatus=status||'Filled'; }
+      else if(/progress|shortlist|interview|will join|planned/i.test(status)){ bucket=0; tagClass='tag-warn'; displayStatus=status; }
+      else { bucket=1; tagClass='tag-bad'; displayStatus=status||'Pending'; }
+      statusRows.push({branch:r.branch, role:ctx.labels[k]||k, count:cnt, status:displayStatus, tagClass, bucket});
+    });
+  });
+  statusRows.sort((a,b)=>a.bucket-b.bucket); // In Progress first, then Pending, then Filled last
+  const statusTableEl = document.getElementById('singleOverviewStatusTable');
+  if(statusTableEl){
+    if(!statusRows.length){
+      statusTableEl.innerHTML = '<thead><tr><th>Note</th></tr></thead><tbody><tr><td>No open vacancies to show.</td></tr></tbody>';
+    } else {
+      let html = `<thead><tr><th>${bLabel}</th><th>Role</th><th>Count</th><th>Status</th></tr></thead><tbody>`;
+      statusRows.forEach(r=>{
+        html += `<tr><td><b>${r.branch}</b></td><td>${r.role}</td><td>${r.count}</td><td><span class="kpi-tag ${r.tagClass}" title="${r.status}">${r.status.length>45?r.status.slice(0,45)+'…':r.status}</span></td></tr>`;
+      });
+      html += '</tbody>';
+      statusTableEl.innerHTML = html;
+    }
+  }
 }
 
 
@@ -2246,20 +2334,20 @@ document.getElementById('trackingSearch').addEventListener('input', e=>renderTra
 document.getElementById('flatTableSearch').addEventListener('input', e=>renderFlatDepartment(e.target.value));
 document.getElementById('refreshBtn').addEventListener('click', tryLiveFetch);
 
-const SERVICE_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1LrMWKdjoIPIPRmRZYk7KhMb_X1nn0qFCiNl3Q6QOQhI/edit?usp=sharing";
-const SALES_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1de8v7f54yVs9Tzz7co9lY7-mz1y4Llwok7vd7KqySho/edit?usp=sharing";
+const SERVICE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1LrMWKdjoIPIPRmRZYk7KhMb_X1nn0qFCiNl3Q6QOQhI/preview";
+const SALES_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1de8v7f54yVs9Tzz7co9lY7-mz1y4Llwok7vd7KqySho/preview";
 
 function updateSheetButton(){
   const btn = document.getElementById('viewSheetBtn');
   if(!btn) return;
   const isService = ACTIVE_DEPARTMENT === 'service';
-  btn.dataset.url = isService ? SERVICE_SHEET_EDIT_URL : SALES_SHEET_EDIT_URL;
+  btn.dataset.url = isService ? SERVICE_SHEET_VIEW_URL : SALES_SHEET_VIEW_URL;
   btn.textContent = isService ? "↗ View Service Sheet" : "↗ View Sales Sheet";
 }
 
 document.getElementById('viewSheetBtn').addEventListener('click', ()=>{
   updateSheetButton();
-  window.open(document.getElementById('viewSheetBtn').dataset.url || SERVICE_SHEET_EDIT_URL, '_blank', 'noopener');
+  window.open(document.getElementById('viewSheetBtn').dataset.url || SERVICE_SHEET_VIEW_URL, '_blank', 'noopener');
 });
 
 let autoRefreshTimer = null;
