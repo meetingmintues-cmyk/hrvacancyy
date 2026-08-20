@@ -408,6 +408,7 @@
       </div>
       <div id="overviewSingleContent" style="display:none;">
         <div class="kpi-grid" id="singleOverviewKpiGrid" style="margin-bottom:16px;"></div>
+        <div class="kpi-grid" id="singleOverviewSecondaryKpi" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px;opacity:0.75;transform:scale(0.94);transform-origin:left top;display:none;"></div>
         <div class="grid-2">
           <div class="card">
             <h3>Total Open Vacancies Over Time</h3>
@@ -1837,21 +1838,22 @@ function renderSingleOverview(ctx){
   const bLabel = ctx.branchLabel || "Branch";
   const roles = getFilteredRoles(ctx);
 
-  // Status breakdown — sum vacancy COUNTS (not just row count) into Pending / In Progress / Filled,
+  // Status breakdown — sum vacancy COUNTS (not just row count) into Pending / In Progress / Filled / New Team,
   // using the real status text per role (same categorization logic as Critical Positions).
-  let pendingSum = 0, inProgressSum = 0, filledStatusSum = 0;
+  let pendingSum = 0, inProgressSum = 0, filledStatusSum = 0, newTeamSum = 0;
   c.latestRows.forEach(r=>{
     roles.forEach(k=>{
       const cnt = r[k]||0;
       if(cnt<=0) return;
       const status = (r[k+"_status"]||'').trim();
-      if(/filled|closed|complete/i.test(status)) filledStatusSum += cnt;
+      if(/new team/i.test(status)) newTeamSum += cnt;
+      else if(/filled|closed|complete/i.test(status)) filledStatusSum += cnt;
       else if(/progress|shortlist|interview|will join|planned/i.test(status)) inProgressSum += cnt;
       else pendingSum += cnt;
     });
   });
   const instances = computeVacancyInstances(ctx).filter(i=>i.status==='open');
-  const longestOpenHours = instances.length ? Math.max(...instances.map(i=>i.hours)) : 0;
+  const avgOpenHours = instances.length ? (instances.reduce((s,i)=>s+i.hours,0)/instances.length) : 0;
   const stalledCount = computeStalled(ctx).length;
 
   const kpiEl = document.getElementById('singleOverviewKpiGrid');
@@ -1861,9 +1863,16 @@ function renderSingleOverview(ctx){
       kpiCard("Open / Pending", pendingSum, pendingSum>0?"Needs attention":"All clear", pendingSum>0?"tag-bad":"tag-good", "alert"),
       kpiCard("In Progress", inProgressSum, inProgressSum>0?"Shortlist/interview stage":"None active", inProgressSum>0?"tag-warn":"tag-good", "clock"),
       kpiCard("Filled (Status)", filledStatusSum, c.totalOpen? Math.round(filledStatusSum/(c.totalOpen||1)*100)+"% closed":"—", "tag-good", "check"),
-      kpiCard("Longest Open", longestOpenHours>0? formatDuration(longestOpenHours):"—", "Most urgent instance", longestOpenHours>0?"tag-bad":"tag-good", "trend", "tracking"),
+      kpiCard("Avg Open", avgOpenHours>0? formatDuration(avgOpenHours):"—", "Across open instances", avgOpenHours>0?"tag-warn":"tag-good", "trend", "tracking"),
       kpiCard("Not Moved", stalledCount, "Unchanged across all logs", stalledCount>0?"tag-bad":"tag-good", "trend", "aging"),
     ].join("");
+  }
+  const secondaryKpiEl = document.getElementById('singleOverviewSecondaryKpi');
+  if(secondaryKpiEl){
+    secondaryKpiEl.innerHTML = newTeamSum>0
+      ? kpiCard("New Team", newTeamSum, "", "tag-info", "branch")
+      : '';
+    secondaryKpiEl.style.display = newTeamSum>0 ? '' : 'none';
   }
 
   destroy('singleOverviewTrend');
@@ -1922,13 +1931,14 @@ function renderSingleOverview(ctx){
       if(cnt<=0) return;
       const status = (r[k+"_status"]||'').trim();
       let bucket, tagClass, displayStatus;
-      if(/filled|closed|complete/i.test(status)){ bucket=2; tagClass='tag-good'; displayStatus=status||'Filled'; }
+      if(/new team/i.test(status)){ bucket=3; tagClass='tag-info'; displayStatus=status; }
+      else if(/filled|closed|complete/i.test(status)){ bucket=2; tagClass='tag-good'; displayStatus=status||'Filled'; }
       else if(/progress|shortlist|interview|will join|planned/i.test(status)){ bucket=0; tagClass='tag-warn'; displayStatus=status; }
       else { bucket=1; tagClass='tag-bad'; displayStatus=status||'Pending'; }
       statusRows.push({branch:r.branch, role:ctx.labels[k]||k, count:cnt, status:displayStatus, tagClass, bucket});
     });
   });
-  statusRows.sort((a,b)=>a.bucket-b.bucket); // In Progress first, then Pending, then Filled last
+  statusRows.sort((a,b)=>a.bucket-b.bucket); // In Progress first, then Pending, then Filled, New Team last (lowest priority)
   const statusTableEl = document.getElementById('singleOverviewStatusTable');
   if(statusTableEl){
     if(!statusRows.length){
