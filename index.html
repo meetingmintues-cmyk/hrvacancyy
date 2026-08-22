@@ -12,7 +12,11 @@
   *{box-sizing:border-box;}
   body{margin:0;background:radial-gradient(1100px 500px at 8% -10%, rgba(79,142,247,0.16), transparent 60%),radial-gradient(900px 500px at 100% 0%, rgba(15,76,129,0.10), transparent 55%),var(--bg);font-family:'Inter',sans-serif;color:var(--ink);min-height:100vh;}
   .shell{display:flex;min-height:100vh;}
-  .sidebar{width:230px;flex-shrink:0;background:linear-gradient(180deg,#0F4C81,#0A3760);color:#EAF2FF;padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;}
+  .sidebar{width:230px;flex-shrink:0;background:linear-gradient(180deg,#0F4C81,#0A3760);color:#EAF2FF;padding:26px 16px;position:sticky;top:0;height:100vh;max-height:100vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;}
+  .sidebar::-webkit-scrollbar{width:5px;}
+  .sidebar::-webkit-scrollbar-track{background:transparent;}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:10px;}
+  .sidebar::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.28);}
   .brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:0 8px 22px;}
   .brand-logo{width:110px;height:auto;border-radius:6px;background:#fff;padding:4px 8px;}
   .brand .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#4F8EF7,#F59E0B);display:flex;align-items:center;justify-content:center;font-family:'Manrope';font-weight:800;font-size:14px;color:#08213A;}
@@ -332,6 +336,8 @@
     <div class="nav-item" data-target="criticalPositions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>Critical Positions</div>
     <div class="nav-group">Business Units</div>
     <div class="dept-switch" id="deptSwitch"></div>
+    <div class="nav-group">Other Verticals</div>
+    <div id="otherVerticalSwitchNav"></div>
     <div class="nav-group">Analytics</div>
     <div class="nav-item" data-target="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</div>
     <div class="nav-item" data-target="trend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg>Vacancy Trend</div>
@@ -407,6 +413,8 @@
         </div>
       </div>
       <div id="overviewSingleContent" style="display:none;">
+        <div class="dataset-switch other-vacancy-switch" id="overviewOVSwitch" style="display:none;margin-bottom:16px;"></div>
+        <div class="dataset-switch other-vertical-switch" id="overviewLocationSwitch" style="display:none;margin-bottom:16px;"></div>
         <div class="kpi-grid" id="singleOverviewKpiGrid" style="margin-bottom:16px;"></div>
         <div class="kpi-grid" id="singleOverviewSecondaryKpi" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px;opacity:0.75;transform:scale(0.94);transform-origin:left top;display:none;"></div>
         <div class="grid-2">
@@ -444,6 +452,7 @@
     <div class="section" id="trend">
       <div id="trendServiceContent">
       <div class="dataset-switch" id="trendSwitch"></div>
+      <div class="dataset-switch other-vacancy-switch" id="trendOVSwitch" style="display:none;"></div>
       <div class="filter-toolbar" id="filterBar1"></div>
       <div class="card"><h3 id="trendTitle">Total Open Vacancies Over Time</h3><div style="height:380px;"><canvas id="trendFull"></canvas></div></div>
       <div class="section-title"><span class="bar"></span>Fill Velocity Leaderboard</div>
@@ -462,6 +471,7 @@
     <div class="section" id="aging">
       <div id="agingServiceContent">
       <div class="dataset-switch" id="agingSwitch"></div>
+      <div class="dataset-switch other-vacancy-switch" id="agingOVSwitch" style="display:none;"></div>
       <div class="filter-toolbar" id="filterBar2"></div>
       <div class="grid-2">
         <div class="card">
@@ -492,6 +502,7 @@
     <div class="section" id="table">
       <div id="tableServiceContent">
       <div class="dataset-switch" id="tableSwitch"></div>
+      <div class="dataset-switch other-vacancy-switch" id="tableOVSwitch" style="display:none;"></div>
       <div class="filter-toolbar" id="filterBar3"></div>
       <div class="filter-bar"><input type="text" id="tableSearch" placeholder="Search branch or date..."></div>
       <div class="table-scroll"><table id="fullTable"></table></div>
@@ -511,6 +522,7 @@
     <div class="section" id="tracking">
       <div id="trackingServiceContent">
       <div class="dataset-switch" id="trackingSwitch"></div>
+      <div class="dataset-switch other-vacancy-switch" id="trackingOVSwitch" style="display:none;"></div>
       <div class="filter-toolbar" id="filterBarTracking"></div>
       <div class="kpi-grid" id="trackingKpiGrid" style="margin-bottom:16px;"></div>
       <div class="dq-banner" style="margin-bottom:16px;">
@@ -602,6 +614,57 @@ const ctxArena = { key:"arena", roles:ARENA_ROLES, labels:ARENA_LABELS, log:[], 
 const ctxNexa = { key:"nexa", roles:NEXA_ROLES, labels:NEXA_LABELS, log:[], prefix:"nx", selectedBranches:null, selectedRoles:null, branchLabel:"Team" };
 const ctxTrueValue = { key:"trueValue", roles:[], labels:{}, log:[], prefix:"tv", selectedBranches:null, selectedRoles:null, branchLabel:"Branch" };
 const ctxOtherVacancy = { key:"otherVacancies", roles:[], labels:{}, log:[], prefix:"ov", selectedBranches:null, selectedRoles:null, branchLabel:"Location" };
+const ctxOtherVacancyService = { key:"otherVacancies", roles:[], labels:{}, log:[], prefix:"ovs", selectedBranches:null, selectedRoles:null, branchLabel:"Department" };
+const ctxOtherVacancyAll = { key:"otherVacancies", roles:[], labels:{}, log:[], prefix:"ova", selectedBranches:null, selectedRoles:null, branchLabel:"Location" };
+const ctxOnroad = { key:"onroad", roles:[], labels:{}, log:[], prefix:"onr", selectedBranches:null, selectedRoles:null, branchLabel:"Location" };
+const ctxBeegains = { key:"beegains", roles:[], labels:{}, log:[], prefix:"beeg", selectedBranches:null, selectedRoles:null, branchLabel:"Team" };
+let ACTIVE_OTHER_VACANCY_SOURCE = 'sales'; // 'sales', 'service', or 'all' — which Other_Vacancy source is currently shown
+
+function rebuildOtherVacancyAllCtx(){
+  const roles = [...new Set([...ctxOtherVacancy.roles, ...ctxOtherVacancyService.roles])];
+  const labels = {...ctxOtherVacancyService.labels, ...ctxOtherVacancy.labels};
+  // Both sources tag their "live" (current, unsnapshotted) rows with a timestamp accurate to the
+  // millisecond — since they're fetched microseconds apart, those two timestamps differ, so a plain
+  // merge would treat them as two different snapshot dates and silently drop one from "latest".
+  // Normalize any live-tagged date from either source to one shared canonical live date first.
+  const canonicalLiveDate = LIVE_PREFIX + new Date().toISOString();
+  const normDate = d => d.startsWith(LIVE_PREFIX) ? canonicalLiveDate : d;
+  const salesLog = ctxOtherVacancy.log.map(r=>({...r, date: normDate(r.date)}));
+  const serviceLog = ctxOtherVacancyService.log.map(r=>({...r, date: normDate(r.date)}));
+  const allDates = [...new Set([...salesLog.map(r=>r.date), ...serviceLog.map(r=>r.date)])];
+  const log = [];
+  allDates.forEach(d=>{
+    const byBranch = {};
+    salesLog.filter(r=>r.date===d).forEach(r=>{
+      if(!byBranch[r.branch]) byBranch[r.branch] = {date:d, branch:r.branch};
+      roles.forEach(role=>{ byBranch[r.branch][role] = (byBranch[r.branch][role]||0) + (r[role]||0); if(r[role+"_status"]) byBranch[r.branch][role+"_status"] = r[role+"_status"]; });
+    });
+    serviceLog.filter(r=>r.date===d).forEach(r=>{
+      if(!byBranch[r.branch]) byBranch[r.branch] = {date:d, branch:r.branch};
+      roles.forEach(role=>{ byBranch[r.branch][role] = (byBranch[r.branch][role]||0) + (r[role]||0); if(r[role+"_status"]) byBranch[r.branch][role+"_status"] = r[role+"_status"]; });
+    });
+    Object.values(byBranch).forEach(rec=>log.push(rec));
+  });
+  ctxOtherVacancyAll.roles = roles;
+  ctxOtherVacancyAll.labels = labels;
+  ctxOtherVacancyAll.log = log;
+
+  // Merge real "Vacancy reported date" lookups from both sources too — otherwise "All" silently
+  // falls back to pure snapshot-FIFO aging while Sales/Service individually use the real dates.
+  const reportedDates = {};
+  [ctxOtherVacancy, ctxOtherVacancyService].forEach(src=>{
+    Object.keys(src.reportedDates||{}).forEach(branch=>{
+      if(!reportedDates[branch]) reportedDates[branch] = {};
+      Object.keys(src.reportedDates[branch]).forEach(role=>{
+        const d = src.reportedDates[branch][role];
+        const existing = reportedDates[branch][role];
+        if(!existing || d < existing) reportedDates[branch][role] = d;
+      });
+    });
+  });
+  ctxOtherVacancyAll.reportedDates = reportedDates;
+}
+
 
 let charts = {};
 let ACTIVE_DATASET = 'existing';
@@ -698,9 +761,44 @@ function jsonpFetch(url, timeoutMs){
     setTimeout(()=>{ if(window[cbName]){ cleanup(); reject(new Error("JSONP timed out")); } }, timeoutMs || 15000);
   });
 }
+
+// Reads a Google Sheet tab directly with no Apps Script backend at all — uses Google's public
+// "visualization" data endpoint (works for any sheet shared as "Anyone with the link can view").
+function gvizJsonpFetch(sheetId, tabName, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cbName = "gviz_cb_" + Date.now() + "_" + Math.floor(Math.random()*100000);
+    const script = document.createElement('script');
+    const cleanup = ()=>{ delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); };
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    script.onerror = ()=>{ cleanup(); reject(new Error("gviz script load failed for tab: "+tabName)); };
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json;responseHandler:${cbName}&sheet=${encodeURIComponent(tabName)}&_=${Date.now()}`;
+    script.src = url;
+    document.body.appendChild(script);
+    setTimeout(()=>{ if(window[cbName]){ cleanup(); reject(new Error("gviz timed out for tab: "+tabName)); } }, timeoutMs || 15000);
+  });
+}
+
+// Converts a gviz table response into the same {ColumnHeader: value} row-object shape
+// used everywhere else in this dashboard, so the existing parsers work unchanged.
+function gvizTableToRows(gvizResponse){
+  if(!gvizResponse || !gvizResponse.table || !Array.isArray(gvizResponse.table.cols)) return [];
+  const cols = gvizResponse.table.cols.map(c=>c.label || c.id || '');
+  const rows = gvizResponse.table.rows || [];
+  return rows.map(r=>{
+    const obj = {};
+    (r.c||[]).forEach((cell,i)=>{
+      let val = cell ? cell.v : null;
+      if(cell && cell.f != null) val = cell.f; // prefer formatted value (e.g. formatted dates) when present
+      obj[cols[i]] = val;
+    });
+    return obj;
+  });
+}
 let CRITICAL_LOG = [];  // [{date, slNo, requirement, status}]
 let CRITICAL_CURRENT = []; // [{slNo, requirement, status}]
 let SALES_DATA = { arena: [], nexa: [], trueValue: [], otherVacancies: [] };
+const OTHER_VERTICALS_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz535l5lmgZ0QqLAJWhM9qaWAG29LxsuNxjpdA7OJDH4NFRqOxpwfwVWZJaiE7h-VH3hw/exec";
+const OTHER_VERTICAL_DEPTS = ['onroad','beegains']; // separate business-unit family — different sidebar section, same rich engine
 let CRITICAL_LOG_SALES = [];    // shared Critical_Manpower history, used by Arena/Nexa/TrueValue/OtherVacancy
 let CRITICAL_CURRENT_SALES = [];
 
@@ -739,9 +837,17 @@ function parseDMonYY(str){
 function findKey(row, candidates){
   for(const c of candidates){ if(row[c]!==undefined) return c; }
   const keys = Object.keys(row);
+  // case-insensitive / whitespace-trimmed exact match — handles real sheets with inconsistent header casing
+  for(const c of candidates){
+    const target = c.trim().toLowerCase();
+    const hit = keys.find(k => k.trim().toLowerCase() === target);
+    if(hit) return hit;
+  }
   for(const k of keys){
     for(const c of candidates){
-      if(k.toLowerCase().indexOf(c.toLowerCase().split(' ')[0]) !== -1) return k;
+      const prefix = c.toLowerCase().split(' ')[0];
+      if(prefix.length < 3) continue; // avoid false-positive collisions from short generic prefixes (e.g. "no" matching inside "SL.No")
+      if(k.toLowerCase().indexOf(prefix) !== -1) return k;
     }
   }
   return null;
@@ -765,19 +871,22 @@ function parseSalesJSON(arr){
 // Converts a flat "Designation / Location / Count" vacancy list (True Value, Other Vacancy) into the
 // same branch x role matrix shape the rich engine (Trend/Aging/Register/Tracking) already understands —
 // roles are the distinct Designations found in the data itself, discovered dynamically (not a fixed list).
-function parseFlatRowsRaw(arr, snapshotDateKey){
+function parseFlatRowsRaw(arr, snapshotDateKey, locKeyCandidates){
   if(!Array.isArray(arr)) return [];
+  locKeyCandidates = locKeyCandidates || ["Job location","Location","Department"];
   return arr.map(r=>{
     const desigKey = findKey(r, ["Designation vacant","Designation"]);
     const countKey = findKey(r, ["No. of vacancies","No of vacancies","Vacancies"]);
-    const locKey = findKey(r, ["Job location","Location","Department"]);
+    const locKey = findKey(r, locKeyCandidates);
     const statusKey = findKey(r, ["Vacancy-Status","Vacancy Status","Status"]);
+    const reportedKey = findKey(r, ["Vacancy reported date","Reported date"]);
     const snapKey = snapshotDateKey ? findKey(r, [snapshotDateKey]) : null;
     return {
       designation: desigKey ? String(r[desigKey]||'').trim() : '',
-      count: countKey ? (Number(r[countKey])||0) : 0,
+      count: countKey ? (Number(r[countKey])||0) : 1, // no count column present → each row IS one vacancy
       location: locKey ? String(r[locKey]||'').trim() : '',
       status: statusKey ? String(r[statusKey]||'').trim() : '',
+      reportedDateRaw: reportedKey ? r[reportedKey] : null,
       snapDateRaw: snapKey ? r[snapKey] : null
     };
   }).filter(r=>r.designation && r.location);
@@ -797,9 +906,27 @@ function flatRowsToRoleBranchRecords(rows, roles){
   });
 }
 
-function applyFlatDataToRichCtx(ctx, currentArr, snapshotArr){
-  const curRows = parseFlatRowsRaw(currentArr, null);
-  const snapRows = parseFlatRowsRaw(snapshotArr, "Snapshot Date");
+// The Beegains sheet's "Location" and "Vacancy-Status" columns currently hold each
+// other's values (Location has status text, Vacancy-Status has the team name).
+// Detect that pattern per-row and correct it. If the sheet is ever fixed upstream,
+// this heuristic simply won't match anything and becomes a harmless no-op.
+function fixBeegainsRows(arr){
+  if(!Array.isArray(arr)) return arr;
+  return arr.map(r=>{
+    const loc = r["Location"], status = r["Vacancy-Status"];
+    // "Academy"/"Agency" showing up in the Vacancy-Status slot is unambiguous — that's team data,
+    // not a status. Whatever typo variant of "Pending" is sitting in Location, swap them back.
+    const statusLooksLikeTeam = typeof status === 'string' && /^(academy|agency)$/i.test(status.trim());
+    if(statusLooksLikeTeam){
+      return {...r, "Location": status, "Vacancy-Status": loc};
+    }
+    return r;
+  });
+}
+
+function applyFlatDataToRichCtx(ctx, currentArr, snapshotArr, locKeyCandidates){
+  const curRows = parseFlatRowsRaw(currentArr, null, locKeyCandidates);
+  const snapRows = parseFlatRowsRaw(snapshotArr, "Snapshot Date", locKeyCandidates);
   const allRows = [...curRows, ...snapRows];
   const roles = [...new Set(allRows.map(r=>r.designation))].filter(Boolean);
   const branches = [...new Set(allRows.map(r=>r.location))].filter(Boolean);
@@ -832,6 +959,18 @@ function applyFlatDataToRichCtx(ctx, currentArr, snapshotArr){
     const liveTag = LIVE_PREFIX + new Date().toISOString();
     ctx.log = ctx.log.filter(r=>!r.date.startsWith(LIVE_PREFIX)).concat(curRecords.map(r=>({...r, date:liveTag})));
   }
+
+  // Real "Vacancy reported date" per branch+role, from the current data — this is the TRUE
+  // open-since date (can predate when snapshot tracking even started), used for Aging.
+  const reportedDates = {};
+  curRows.forEach(r=>{
+    const d = parseDMonYY(r.reportedDateRaw);
+    if(!d) return;
+    if(!reportedDates[r.location]) reportedDates[r.location] = {};
+    const existing = reportedDates[r.location][r.designation];
+    if(!existing || d < existing) reportedDates[r.location][r.designation] = d; // earliest reported date wins
+  });
+  ctx.reportedDates = reportedDates;
 }
 
 function daysBetween(d1, d2){ return Math.round((d2 - d1) / 86400000); }
@@ -888,7 +1027,9 @@ function parseCurrentJSON(arr, roles, headerMap, branchKey){
 
 
 
+let LAST_FETCH_TIME = 0;
 async function tryLiveFetch(){
+  LAST_FETCH_TIME = Date.now();
   const btn = document.getElementById('refreshBtn');
   const statusText = document.getElementById('statusText');
   const dot = document.querySelector('.status-pill .live-dot');
@@ -920,6 +1061,11 @@ async function tryLiveFetch(){
     if(upCur.length){ ctxUpcoming.log = ctxUpcoming.log.filter(r=>!r.date.startsWith(LIVE_PREFIX)).concat(upCur.map(r=>({...r, date:liveTag}))); gotLive = true; }
     rebuildCombinedCtx();
 
+    // Service's own Other_Vacancy tab (separate from the Sales spreadsheet's Other_Vacancy tab)
+    if(svc.otherVacancyCurrent || svc.otherVacancySnapshot){
+      applyFlatDataToRichCtx(ctxOtherVacancyService, svc.otherVacancyCurrent, svc.otherVacancySnapshot);
+    }
+
     if(sales){
       // Arena & Nexa — confirmed real structure: branch x role matrix with daily snapshot history, same engine as Service
       const arSnap = parseSnapshotJSON(sales.arenaSnapshot, ARENA_ROLES, ARENA_HEADER_MAP, "Branch Name");
@@ -945,6 +1091,7 @@ async function tryLiveFetch(){
       if(criticalSalesSnap.length) CRITICAL_LOG_SALES = criticalSalesSnap;
       if(criticalSalesCur.length) CRITICAL_CURRENT_SALES = criticalSalesCur;
     }
+    rebuildOtherVacancyAllCtx();
 
     if(!anySuccess && !gotLive) throw new Error("Response parsed but produced 0 usable rows for Service — check sheet names match exactly.");
     statusText.textContent = (gotLive ? "Live — includes current sheet edits — " : "Live snapshot data — ") + new Date().toLocaleTimeString();
@@ -1107,6 +1254,25 @@ function computeVacancyInstances(ctx){
     }
   });
   return all.sort((a,b)=> dateSortValue(b.openedDate) - dateSortValue(a.openedDate));
+}
+
+// For departments with a real per-row "Vacancy reported date" (Onroad/Beegains), Aging should
+// measure from that TRUE open date — which can predate when snapshot tracking even started —
+// rather than from when our snapshot history first happened to detect the vacancy.
+// Movement Tracking intentionally keeps using computeVacancyInstances() directly (unchanged),
+// since that's the snapshot-based fill/status history the user wants preserved as-is.
+function getAgingInstances(ctx){
+  const fifoInstances = computeVacancyInstances(ctx);
+  if(!ctx.reportedDates || !Object.keys(ctx.reportedDates).length) return fifoInstances;
+  const now = new Date();
+  return fifoInstances.map(inst=>{
+    if(inst.status !== 'open') return inst; // only reinterpret still-open instances
+    const realDate = ctx.reportedDates[inst.branch] && ctx.reportedDates[inst.branch][inst.role];
+    if(!realDate) return inst; // no real date on record for this branch+role — keep FIFO estimate
+    const openedDateStr = realDate.toISOString().slice(0,19).replace('T',' ');
+    const hours = hoursBetween(realDate, now);
+    return {...inst, openedDate: openedDateStr, hours, daysLabel: formatDuration(hours)};
+  });
 }
 
 function computeStalled(ctx){
@@ -1316,7 +1482,7 @@ function renderAgingHeatmap(ctx){
   const stalledTitleEl = document.getElementById('stalledTitle');
   if(stalledTitleEl) stalledTitleEl.textContent = 'Stalled Vacancies — ' + label;
 
-  const instances = computeVacancyInstances(ctx);
+  const instances = getAgingInstances(ctx);
   const el = document.getElementById("agingHeatmap");
   const openInstances = instances.filter(i=>i.status==='open');
   if(!openInstances.length){ el.innerHTML = '<p style="font-size:12.5px;color:#5A7085;">No open vacancies to age.</p>'; return; }
@@ -1587,7 +1753,7 @@ function renderRichSingleDept(ctx){
 
 function renderForKey(key){
   if(key==='existing' || key==='upcoming' || key==='all'){ renderAll(); }
-  else if(key==='arena' || key==='nexa' || key==='trueValue' || key==='otherVacancies'){ renderRichSingleDept(getCtxByKey(key)); }
+  else if(key==='arena' || key==='nexa' || key==='trueValue' || key==='otherVacancies' || key==='onroad' || key==='beegains'){ renderRichSingleDept(getCtxByKey(key)); }
 }
 
 function toggleRole(key, role, checked){
@@ -1615,6 +1781,30 @@ document.addEventListener('click', (e)=>{
   }
 });
 
+function updateOtherVacancySwitches(){
+  const show = ACTIVE_DEPARTMENT === 'otherVacancies';
+  const ids = ['overviewOVSwitch','trendOVSwitch','agingOVSwitch','tableOVSwitch','trackingOVSwitch'];
+  const html = `
+    <button class="${ACTIVE_OTHER_VACANCY_SOURCE==='all'?'active':''}" onclick="setOtherVacancySource('all')">All</button>
+    <button class="${ACTIVE_OTHER_VACANCY_SOURCE==='sales'?'active':''}" onclick="setOtherVacancySource('sales')">Sales Sheet</button>
+    <button class="${ACTIVE_OTHER_VACANCY_SOURCE==='service'?'active':''}" onclick="setOtherVacancySource('service')">Service Sheet</button>
+  `;
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.style.display = show ? '' : 'none';
+    el.innerHTML = show ? html : '';
+  });
+}
+
+function setOtherVacancySource(source){
+  ACTIVE_OTHER_VACANCY_SOURCE = source;
+  updateOtherVacancySwitches();
+  updateSheetButton();
+  renderRichSingleDept(getCtxByKey('otherVacancies'));
+  renderCompanyOverview();
+}
+
 function getCtxByKey(key){
   if(key==='existing') return ctxExisting;
   if(key==='upcoming') return ctxUpcoming;
@@ -1622,7 +1812,9 @@ function getCtxByKey(key){
   if(key==='arena') return ctxArena;
   if(key==='nexa') return ctxNexa;
   if(key==='trueValue') return ctxTrueValue;
-  if(key==='otherVacancies') return ctxOtherVacancy;
+  if(key==='otherVacancies') return ACTIVE_OTHER_VACANCY_SOURCE === 'service' ? ctxOtherVacancyService : ACTIVE_OTHER_VACANCY_SOURCE === 'all' ? ctxOtherVacancyAll : ctxOtherVacancy;
+  if(key==='onroad') return ctxOnroad;
+  if(key==='beegains') return ctxBeegains;
   return ctxExisting;
 }
 
@@ -1832,7 +2024,32 @@ function renderCompanyWideCriticalKpis(){
   }
 }
 
+const LOCATION_SWITCH_MAP = {
+  onroad: { Malappuram: 'Malappuram', Kochi: 'Kochi' },
+  beegains: { Agency: 'Agency', Academy: 'Academy' }
+};
+
+function setLocationFilterSwitch(deptKey, locName){
+  const ctx = getCtxByKey(deptKey);
+  ctx.selectedBranches = locName === 'all' ? null : new Set([locName]);
+  renderRichSingleDept(ctx);
+}
+
+function updateLocationSwitch(ctx){
+  const el = document.getElementById('overviewLocationSwitch');
+  if(!el) return;
+  const map = LOCATION_SWITCH_MAP[ctx.key];
+  if(!map){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const locNames = Object.keys(map);
+  const selected = ctx.selectedBranches;
+  const isAll = !selected;
+  el.style.display = '';
+  el.innerHTML = `<button class="${isAll?'active':''}" onclick="setLocationFilterSwitch('${ctx.key}','all')">All</button>` +
+    locNames.map(loc => `<button class="${!isAll && selected.has(loc)?'active':''}" onclick="setLocationFilterSwitch('${ctx.key}','${loc}')">${loc}</button>`).join('');
+}
+
 function renderSingleOverview(ctx){
+  updateLocationSwitch(ctx);
   const c = computeCore(ctx);
   const label = DEPARTMENT_LABELS[ctx.key] || ctx.key;
   const bLabel = ctx.branchLabel || "Branch";
@@ -1852,18 +2069,18 @@ function renderSingleOverview(ctx){
       else pendingSum += cnt;
     });
   });
-  const instances = computeVacancyInstances(ctx).filter(i=>i.status==='open');
+  const instances = getAgingInstances(ctx).filter(i=>i.status==='open');
   const avgOpenHours = instances.length ? (instances.reduce((s,i)=>s+i.hours,0)/instances.length) : 0;
   const stalledCount = computeStalled(ctx).length;
 
   const kpiEl = document.getElementById('singleOverviewKpiGrid');
   if(kpiEl){
     kpiEl.innerHTML = [
-      kpiCard("Total Open Vacancies", c.totalOpen, label, "tag-info", "target"),
-      kpiCard("Open / Pending", pendingSum, pendingSum>0?"Needs attention":"All clear", pendingSum>0?"tag-bad":"tag-good", "alert"),
-      kpiCard("In Progress", inProgressSum, inProgressSum>0?"Shortlist/interview stage":"None active", inProgressSum>0?"tag-warn":"tag-good", "clock"),
-      kpiCard("Filled (Status)", filledStatusSum, c.totalOpen? Math.round(filledStatusSum/(c.totalOpen||1)*100)+"% closed":"—", "tag-good", "check"),
-      kpiCard("Avg Open", avgOpenHours>0? formatDuration(avgOpenHours):"—", "Across open instances", avgOpenHours>0?"tag-warn":"tag-good", "trend", "tracking"),
+      kpiCard("Total Open Vacancies", c.totalOpen, label, "tag-info", "target", "table"),
+      kpiCard("Open / Pending", pendingSum, pendingSum>0?"Needs attention":"All clear", pendingSum>0?"tag-bad":"tag-good", "alert", "table"),
+      kpiCard("In Progress", inProgressSum, inProgressSum>0?"Shortlist/interview stage":"None active", inProgressSum>0?"tag-warn":"tag-good", "clock", "tracking"),
+      kpiCard("Filled (Status)", filledStatusSum, c.totalOpen? Math.round(filledStatusSum/(c.totalOpen||1)*100)+"% closed":"—", "tag-good", "check", "tracking"),
+      kpiCard("Avg Open", avgOpenHours>0? formatDuration(avgOpenHours):"—", "Across open instances", avgOpenHours>0?"tag-warn":"tag-good", "trend", "aging"),
       kpiCard("Not Moved", stalledCount, "Unchanged across all logs", stalledCount>0?"tag-bad":"tag-good", "trend", "aging"),
     ].join("");
   }
@@ -1955,9 +2172,9 @@ function renderSingleOverview(ctx){
 }
 
 
-const DEPARTMENT_LABELS = { service:'Service', arena:'Arena', nexa:'Nexa', trueValue:'True Value', otherVacancies:'Other Vacancies' };
+const DEPARTMENT_LABELS = { service:'Service', arena:'Arena', nexa:'Nexa', trueValue:'True Value', otherVacancies:'Other Vacancies', onroad:'Onroad', beegains:'Beegains' };
 let ACTIVE_DEPARTMENT = 'service';
-let SALES_SELECTED_LOCATIONS = { arena:null, nexa:null, trueValue:null, otherVacancies:null };
+let SALES_SELECTED_LOCATIONS = { arena:null, nexa:null, trueValue:null, otherVacancies:null, onroad:null, beegains:null };
 
 function getFlatDeptStats(dept){
   const rows = SALES_DATA[dept] || [];
@@ -1987,11 +2204,21 @@ function getServiceStats(){
 
 function getRichSingleStats(ctx){
   const c = computeCore(ctx);
-  const openInstances = computeVacancyInstances(ctx).filter(i=>i.status==='open');
+  const openInstances = getAgingInstances(ctx).filter(i=>i.status==='open');
   const openHours = openInstances.map(i=>i.hours);
   const oldest = openHours.length ? Math.round(Math.max(...openHours)/24) : null;
   const locations = new Set(ctx.log.map(r=>r.branch)).size;
   return {total: c.totalOpen, oldest, locations};
+}
+
+function getOtherVacancyCombinedStats(){
+  const sales = getRichSingleStats(ctxOtherVacancy);
+  const service = getRichSingleStats(ctxOtherVacancyService);
+  return {
+    total: sales.total + service.total,
+    oldest: [sales.oldest, service.oldest].filter(v=>v!=null).length ? Math.max(...[sales.oldest, service.oldest].filter(v=>v!=null)) : null,
+    locations: sales.locations + service.locations
+  };
 }
 
 function getCriticalOpenCount(logArr, currentArr){
@@ -2009,7 +2236,9 @@ function renderCompanyOverview(){
   const arena = getRichSingleStats(ctxArena);
   const nexa = getRichSingleStats(ctxNexa);
   const trueValue = getRichSingleStats(ctxTrueValue);
-  const other = getRichSingleStats(ctxOtherVacancy);
+  const other = getOtherVacancyCombinedStats();
+  const onroad = getRichSingleStats(ctxOnroad);
+  const beegains = getRichSingleStats(ctxBeegains);
 
   const deptStats = [
     {key:'service', label:'Service', ...service},
@@ -2017,6 +2246,8 @@ function renderCompanyOverview(){
     {key:'nexa', label:'Nexa', ...nexa},
     {key:'trueValue', label:'True Value', ...trueValue},
     {key:'otherVacancies', label:'Other Vacancies', ...other},
+    {key:'onroad', label:'Onroad', ...onroad},
+    {key:'beegains', label:'Beegains', ...beegains},
   ];
   const grandTotal = deptStats.reduce((s,d)=>s+d.total,0);
   const overallOldest = deptStats.filter(d=>d.oldest!=null).sort((a,b)=>b.oldest-a.oldest)[0];
@@ -2040,7 +2271,9 @@ function renderCompanyOverview(){
       kpiCard("Arena", arena.total, arena.locations+" teams", "tag-info", "build", null, null, "setActiveDepartment('arena')"),
       kpiCard("Nexa", nexa.total, nexa.locations+" teams", "tag-info", "build", null, null, "setActiveDepartment('nexa')"),
       kpiCard("True Value", trueValue.total, trueValue.locations+" locations", "tag-info", "build", null, null, "setActiveDepartment('trueValue')"),
-      kpiCard("Other Vacancies", other.total, other.locations+" locations", "tag-info", "build", null, null, "setActiveDepartment('otherVacancies')"),
+      kpiCard("Other Vacancies", other.total, "Service + Sales combined", "tag-info", "build", null, null, "setActiveDepartment('otherVacancies')"),
+      kpiCard("Onroad", onroad.total, onroad.locations+" locations", "tag-info", "build", null, null, "setActiveDepartment('onroad')"),
+      kpiCard("Beegains", beegains.total, beegains.locations+" teams", "tag-info", "build", null, null, "setActiveDepartment('beegains')"),
       kpiCard("Critical Manpower", criticalTotal, "Service + Sales — click to view", criticalTotal>0?"tag-bad":"tag-good", "alert", "criticalPositions"),
     ].join("");
   }
@@ -2088,17 +2321,26 @@ function renderDeptSwitch(){
   if(!el) return;
   const activeSection = document.querySelector('.section.active');
   const inDeptDetail = activeSection && DEPT_DETAIL_PAGES.includes(activeSection.id);
-  el.innerHTML = Object.keys(DEPARTMENT_LABELS).map(key =>
+  const mainUnitKeys = Object.keys(DEPARTMENT_LABELS).filter(k => !OTHER_VERTICAL_DEPTS.includes(k));
+  el.innerHTML = mainUnitKeys.map(key =>
     `<button class="${(inDeptDetail && ACTIVE_DEPARTMENT===key)?'active':''}" onclick="setActiveDepartment('${key}')">${DEPARTMENT_LABELS[key]}</button>`
   ).join('');
+  const ovEl = document.getElementById('otherVerticalSwitchNav');
+  if(ovEl){
+    ovEl.innerHTML = OTHER_VERTICAL_DEPTS.map(key =>
+      `<div class="nav-item ${(inDeptDetail && ACTIVE_DEPARTMENT===key)?'active':''}" onclick="setActiveDepartment('${key}')">${icon(ICONS.build)}${DEPARTMENT_LABELS[key]}</div>`
+    ).join('');
+  }
 }
-
 const RICH_MULTI_DEPTS = ['service'];       // has Existing/Upcoming sub-toggle
-const RICH_SINGLE_DEPTS = ['arena','nexa','trueValue','otherVacancies'];  // full engine, single dataset, no sub-toggle
+const RICH_SINGLE_DEPTS = ['arena','nexa','trueValue','otherVacancies','onroad','beegains'];  // full engine, single dataset, no sub-toggle
 const FLAT_DEPTS = []; // (none — every department now uses the rich engine)
 
 function setActiveDepartment(dept){
   ACTIVE_DEPARTMENT = dept;
+  if(dept === 'otherVacancies'){
+    ACTIVE_OTHER_VACANCY_SOURCE = 'all'; // always open on the combined view, not whatever was last selected
+  }
   updateDepartmentVisibility();
   updateSheetButton();
   if(RICH_MULTI_DEPTS.includes(dept)){
@@ -2138,7 +2380,8 @@ function updateDepartmentVisibility(){
   ['trendFlatContent','agingFlatContent','tableFlatContent','trackingFlatContent'].forEach(id=>setDisp(id, isFlat));
 
   // The Existing/Upcoming sub-toggle only makes sense for Service (Arena/Nexa are single-dataset).
-  document.querySelectorAll('.dataset-switch:not(.critical-source-switch)').forEach(el=>{ el.style.display = isRichMulti ? '' : 'none'; });
+  document.querySelectorAll('.dataset-switch:not(.critical-source-switch):not(.other-vacancy-switch):not(.other-vertical-switch)').forEach(el=>{ el.style.display = isRichMulti ? '' : 'none'; });
+  updateOtherVacancySwitches();
 
   updateKpiVisibility(document.querySelector('.section.active') ? document.querySelector('.section.active').id : 'overview');
 
@@ -2346,13 +2589,19 @@ document.getElementById('refreshBtn').addEventListener('click', tryLiveFetch);
 
 const SERVICE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1LrMWKdjoIPIPRmRZYk7KhMb_X1nn0qFCiNl3Q6QOQhI/preview";
 const SALES_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1de8v7f54yVs9Tzz7co9lY7-mz1y4Llwok7vd7KqySho/preview";
+const OTHER_VERTICALS_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/18UV6OPKgXiOtAvpK2flx1QO5O7YzWRdetOV1s0O2HCs/preview";
 
 function updateSheetButton(){
   const btn = document.getElementById('viewSheetBtn');
   if(!btn) return;
-  const isService = ACTIVE_DEPARTMENT === 'service';
-  btn.dataset.url = isService ? SERVICE_SHEET_VIEW_URL : SALES_SHEET_VIEW_URL;
-  btn.textContent = isService ? "↗ View Service Sheet" : "↗ View Sales Sheet";
+  let url, label;
+  if(ACTIVE_DEPARTMENT === 'service'){ url = SERVICE_SHEET_VIEW_URL; label = "Service Sheet"; }
+  else if(ACTIVE_DEPARTMENT === 'onroad'){ url = OTHER_VERTICALS_SHEET_VIEW_URL; label = "Onroad Sheet"; }
+  else if(ACTIVE_DEPARTMENT === 'beegains'){ url = OTHER_VERTICALS_SHEET_VIEW_URL; label = "Beegains Sheet"; }
+  else if(ACTIVE_DEPARTMENT === 'otherVacancies' && ACTIVE_OTHER_VACANCY_SOURCE === 'service'){ url = SERVICE_SHEET_VIEW_URL; label = "Service Sheet"; }
+  else { url = SALES_SHEET_VIEW_URL; label = DEPARTMENT_LABELS[ACTIVE_DEPARTMENT] ? DEPARTMENT_LABELS[ACTIVE_DEPARTMENT]+" Sheet" : "Sales Sheet"; }
+  btn.dataset.url = url;
+  btn.textContent = "↗ View " + label;
 }
 
 document.getElementById('viewSheetBtn').addEventListener('click', ()=>{
@@ -2369,6 +2618,14 @@ function stopAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = null;
 }
+document.addEventListener('visibilitychange', function(){
+  // Browsers throttle/pause setInterval timers in backgrounded tabs — e.g. opening
+  // "View Sheet" (a new tab) backgrounds this one. Catch up immediately on return,
+  // instead of waiting for a possibly-stalled interval timer.
+  if(document.visibilityState === 'visible' && (Date.now() - LAST_FETCH_TIME) > 30000){
+    tryLiveFetch();
+  }
+});
 document.getElementById('autoRefreshToggle').addEventListener('change', e=>{
   if(e.target.checked) startAutoRefresh(); else stopAutoRefresh();
 });
@@ -2377,13 +2634,47 @@ rebuildCombinedCtx();
 renderDeptSwitch();
 updateDepartmentVisibility();
 updateSheetButton();
+rebuildOtherVacancyAllCtx();
 renderAll();
+updateOtherVacancySwitches();
 renderCompanyOverview();
 renderCriticalSourceSwitch();
 renderUnifiedCritical();
 renderCompanyWideCriticalKpis();
 tryLiveFetch();
 startAutoRefresh();
+
+/*************************************************
+ * ONROAD / BEEGAINS — full rich engine, same as Arena/Nexa.
+ * Real snapshot-based FIFO tracking, via their own Apps Script Web App.
+ * Shown separately in the sidebar since it's a different vertical.
+ *************************************************/
+function loadOtherVerticalsData(){
+  try{
+    return jsonpFetch(OTHER_VERTICALS_APPS_SCRIPT_URL)
+      .then(data => {
+        try{
+          if(!data) throw new Error("Other Verticals response invalid");
+          applyFlatDataToRichCtx(ctxOnroad, data.onroadCurrent, data.onroadSnapshot, ["Location"]);
+          applyFlatDataToRichCtx(ctxBeegains, fixBeegainsRows(data.beegainsCurrent), fixBeegainsRows(data.beegainsSnapshot), ["Location"]);
+          if(OTHER_VERTICAL_DEPTS.includes(ACTIVE_DEPARTMENT)){
+            renderRichSingleDept(getCtxByKey(ACTIVE_DEPARTMENT));
+          }
+          renderCompanyOverview();
+        }catch(innerErr){
+          console.warn("Other Verticals: failed to apply data (dashboard otherwise unaffected):", innerErr);
+        }
+      })
+      .catch(err => { console.warn("Other Verticals fetch failed (dashboard otherwise unaffected):", err); });
+  }catch(outerErr){
+    console.warn("Other Verticals: failed to even start fetch (dashboard otherwise unaffected):", outerErr);
+    return Promise.resolve();
+  }
+}
+
+setTimeout(loadOtherVerticalsData, 50); // deliberately deferred and isolated from the main render pipeline
+
+
 </script>
 </body>
 </html>
