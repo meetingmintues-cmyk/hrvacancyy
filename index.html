@@ -573,8 +573,8 @@
 
 <script>
 
-const EXIST_ROLES = ["MS","BSM","SME","Mechanic","ServiceAdvisor","SATrainee","MechanicTrainee","Tinker","Painter","PainterTrainee","BSA","BSATrainee","Accessories"];
-const EXIST_LABELS = {MS:"MS",BSM:"BSM",SME:"SME",Mechanic:"Mechanic",ServiceAdvisor:"Service Advisor",SATrainee:"SA Trainee",MechanicTrainee:"Mechanic Trainee",Tinker:"Tinker",Painter:"Painter",PainterTrainee:"Painter Trainee",BSA:"BSA",BSATrainee:"BSA Trainee",Accessories:"Accessories"};
+const EXIST_ROLES = ["MS","CRM","BSM","SME","Mechanic","ServiceAdvisor","SATrainee","MechanicTrainee","Tinker","Painter","PainterTrainee","BSA","BSS","BSATrainee","FloorSupervisor","CCE","Washing","Accessories"];
+const EXIST_LABELS = {MS:"MS",CRM:"CRM",BSM:"BSM",SME:"SME",Mechanic:"Mechanic",ServiceAdvisor:"Service Advisor",SATrainee:"SA Trainee",MechanicTrainee:"Mechanic Trainee",Tinker:"Tinker",Painter:"Painter",PainterTrainee:"Painter Trainee",BSA:"BSA",BSS:"BSS",BSATrainee:"BSA Trainee",FloorSupervisor:"Floor Supervisor",CCE:"CCE",Washing:"Washing",Accessories:"Accessories"};
 const UPCOMING_ROLES = ["MS","CRM","BSM","SME","Mechanic","ServiceAdvisor","Tinker","Painter","PainterTrainee","BSA","BSATrainee"];
 const UPCOMING_LABELS = {MS:"MS",CRM:"CRM",BSM:"BSM",SME:"SME",Mechanic:"Mechanic",ServiceAdvisor:"Service Advisor",Tinker:"Tinker",Painter:"Painter",PainterTrainee:"Painter Trainee",BSA:"BSA",BSATrainee:"BSA Trainee"};
 const ARENA_ROLES = ["BSH","Accountatant"];
@@ -624,11 +624,14 @@ function rebuildOtherVacancyAllCtx(){
   const roles = [...new Set([...ctxOtherVacancy.roles, ...ctxOtherVacancyService.roles])];
   const labels = {...ctxOtherVacancyService.labels, ...ctxOtherVacancy.labels};
   // Both sources tag their "live" (current, unsnapshotted) rows with a timestamp accurate to the
-  // millisecond — since they're fetched microseconds apart, those two timestamps differ, so a plain
-  // merge would treat them as two different snapshot dates and silently drop one from "latest".
-  // Normalize any live-tagged date from either source to one shared canonical live date first.
+  // millisecond, and their historical snapshots happen at DIFFERENT times of day from each other
+  // (e.g. Sales snapshots at 13:43, Service at 04:47). A plain merge would treat every one of these
+  // as its own distinct "date", so picking "the latest date" for a given calendar day would grab
+  // just ONE source's snapshot and silently drop the other source's contribution entirely for that
+  // day — undercounting the combined total. Normalize every date to calendar-day granularity before
+  // merging, so both sources' same-day snapshots always land in the same bucket and get summed.
   const canonicalLiveDate = LIVE_PREFIX + new Date().toISOString();
-  const normDate = d => d.startsWith(LIVE_PREFIX) ? canonicalLiveDate : d;
+  const normDate = d => d.startsWith(LIVE_PREFIX) ? canonicalLiveDate : d.slice(0,10);
   const salesLog = ctxOtherVacancy.log.map(r=>({...r, date: normDate(r.date)}));
   const serviceLog = ctxOtherVacancyService.log.map(r=>({...r, date: normDate(r.date)}));
   const allDates = [...new Set([...salesLog.map(r=>r.date), ...serviceLog.map(r=>r.date)])];
@@ -688,7 +691,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQrUL8NtThnnZX
 const SALES_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTYmSz4ItqFI6TQEmncXarT0xLNhKq5j9vSonSNZiPGVnJFAw32jZIqwn790SYW_XAMQ/exec"; // Sales spreadsheet's own Web App
 const LIVE_PREFIX = "LIVE:";
 
-const EXIST_HEADER_MAP = {MS:"MS", BSM:"BSM", SME:"SME", Mechanic:"Mechanic", ServiceAdvisor:"Service Advisor", SATrainee:"SA Trainee", MechanicTrainee:"Mechanic Trainee", Tinker:"Tinker", Painter:"Painter", PainterTrainee:"Painter Trainee", BSA:"BSA", BSATrainee:"BSA Trainee", Accessories:"Accessories"};
+const EXIST_HEADER_MAP = {MS:"MS", CRM:"CRM", BSM:"BSM", SME:"SME", Mechanic:"Mechanic", ServiceAdvisor:"Service Advisor", SATrainee:"SA Trainee", MechanicTrainee:"Mechanic Trainee", Tinker:"Tinker", Painter:"Painter", PainterTrainee:"Painter Trainee", BSA:"BSA", BSS:"BSS", BSATrainee:"BSA Trainee", FloorSupervisor:"Floor supervisor", CCE:"CCE", Washing:"Washing", Accessories:"Accessories"};
 const UPCOMING_HEADER_MAP = {MS:"MS", CRM:"CRM", BSM:"BSM", SME:"SME", Mechanic:"Mechanic", ServiceAdvisor:"Service Advisor", Tinker:"Tinker", Painter:"Painter", PainterTrainee:"Painter Trainee", BSA:"BSA", BSATrainee:"BSA Trainee"};
 const ARENA_HEADER_MAP = {BSH:"BSH", Accountatant:"Accountatant"};
 const NEXA_HEADER_MAP = {SRM:"SRM"};
@@ -996,15 +999,36 @@ function parseCriticalCurrentJSON(arr){
 }
 
 function findStatusKey(row, roleColName){
-  return findKey(row, [roleColName+" Status", roleColName+"-Status", roleColName+"Status"]);
+  // Deliberately exact/trimmed matching only — NOT the general fuzzy substring fallback used
+  // elsewhere. A fuzzy match here is exactly what caused "Mechanic" to match "Mechanic Trainee",
+  // or a role to match its own count column, as a false-positive "status" companion.
+  const candidates = [roleColName+" Status", roleColName+"-Status", roleColName+"Status"];
+  for(const c of candidates){ if(row[c]!==undefined) return c; }
+  const keys = Object.keys(row);
+  for(const c of candidates){
+    const target = c.trim().toLowerCase();
+    const hit = keys.find(k => k.trim().toLowerCase() === target);
+    if(hit) return hit;
+  }
+  return null;
 }
+// Reads a column value by its expected header name, tolerating exact-vs-trimmed/case mismatches —
+// e.g. a sheet header of "Washing " (trailing space) still matches a lookup for "Washing". Without
+// this, a single stray space in a header silently zeroes out that entire column's counts.
+function getColValue(row, headerName){
+  if(row[headerName] !== undefined) return row[headerName];
+  const target = headerName.trim().toLowerCase();
+  const key = Object.keys(row).find(k => k.trim().toLowerCase() === target);
+  return key !== undefined ? row[key] : undefined;
+}
+
 function parseSnapshotJSON(arr, roles, headerMap, branchKey){
   branchKey = branchKey || "Branch";
   if(!Array.isArray(arr)) return [];
   return arr.filter(r=>r[branchKey] && !/^total$/i.test(String(r[branchKey]))).map(r=>{
     const rec = {date: normalizeDate(r["Snapshot Date"]), branch: String(r[branchKey])};
     roles.forEach(k=>{
-      rec[k] = Number(r[headerMap[k]])||0;
+      rec[k] = Number(getColValue(r, headerMap[k]))||0;
       const statusKey = findStatusKey(r, headerMap[k]);
       rec[k+"_status"] = statusKey ? String(r[statusKey]||'').trim() : '';
     });
@@ -1017,7 +1041,7 @@ function parseCurrentJSON(arr, roles, headerMap, branchKey){
   return arr.filter(r=>r[branchKey] && !/^total$/i.test(String(r[branchKey]))).map(r=>{
     const rec = {branch: String(r[branchKey]), lastEdited: r["Last Edited"] || null};
     roles.forEach(k=>{
-      rec[k] = Number(r[headerMap[k]])||0;
+      rec[k] = Number(getColValue(r, headerMap[k]))||0;
       const statusKey = findStatusKey(r, headerMap[k]);
       rec[k+"_status"] = statusKey ? String(r[statusKey]||'').trim() : '';
     });
@@ -1288,7 +1312,7 @@ function getStatusBasedInstances(ctx){
       const count = r[role]||0;
       if(count<=0) return;
       const status = (r[role+"_status"]||'').trim();
-      const isFilled = /filled|closed|complete/i.test(status);
+      const isFilled = /filled|closed|complete|joined/i.test(status);
       const realDate = ctx.reportedDates[r.branch] && ctx.reportedDates[r.branch][role];
       const openedDt = realDate || latestDt;
       const openedDateStr = openedDt.toISOString().slice(0,19).replace('T',' ');
@@ -1881,7 +1905,7 @@ function setBranchFilter(key, mode){
 let CRITICAL_SELECTED_POSITIONS = null; // null = all
 
 function statusColor(status){
-  if(/filled|closed|complete/i.test(status)) return '#22C55E';
+  if(/filled|closed|complete|joined/i.test(status)) return '#22C55E';
   if(/progress|shortlist|interview/i.test(status)) return '#F59E0B';
   return '#EF4444';
 }
@@ -1929,9 +1953,9 @@ function renderUnifiedCritical(){
   if(titleEl) titleEl.textContent = (isService ? "Service" : "Sales") + " — Critical Leadership Positions";
   if(subEl) subEl.textContent = isService ? "Status of senior / hard-to-fill Service roles" : `Shared across Arena, Nexa, True Value & Other Vacancies — one Critical_Manpower tab`;
 
-  const pendingCount = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
-  const filledCount = rows.filter(r=>/filled|closed|complete/i.test(r.status)).length;
-  const ages = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).map(r=>realDaysOpenFor(r)).filter(v=>v!=null);
+  const pendingCount = rows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).length;
+  const filledCount = rows.filter(r=>/filled|closed|complete|joined/i.test(r.status)).length;
+  const ages = rows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).map(r=>realDaysOpenFor(r)).filter(v=>v!=null);
   const longest = ages.length ? Math.max(...ages) : 0;
 
   const kpiEl = document.getElementById('unifiedCriticalKpiGrid');
@@ -1954,7 +1978,7 @@ function renderUnifiedCritical(){
         const da = realDaysOpenFor(a), db = realDaysOpenFor(b);
         return (db==null?-1:db) - (da==null?-1:da);
       }).forEach(r=>{
-        const tagClass = /filled|closed|complete/i.test(r.status) ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
+        const tagClass = /filled|closed|complete|joined/i.test(r.status) ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
         const daysOpen = realDaysOpenFor(r);
         const daysTag = daysOpen==null ? '—' : `<span class="kpi-tag ${daysOpen>=60?'tag-bad':daysOpen>=30?'tag-warn':'tag-info'}">${daysOpen} day(s)</span>`;
         html += `<tr><td>${r.slNo||''}</td><td><b>${r.requirement}</b></td><td><span class="kpi-tag ${tagClass}" title="${r.status}">${r.status.length>40? r.status.slice(0,40)+'…' : r.status}</span></td><td>${formatStartDate(r.startDateRaw)}</td><td>${daysTag}</td></tr>`;
@@ -1971,7 +1995,7 @@ function renderUnifiedCritical(){
       items.push({cls:"warn", text:"No Critical Manpower rows found yet for this source."});
     } else {
       items.push({cls: pendingCount>0?"bad":"good", text:`<b>${pendingCount}</b> of <b>${rows.length}</b> critical leadership positions are still open${isService ? '' : ', shared across Arena, Nexa, True Value, and Other Vacancies'}.`});
-      const oldest = rows.filter(r=>!/filled|closed|complete/i.test(r.status)).map(r=>({req:r.requirement, age:realDaysOpenFor(r)})).filter(r=>r.age!=null).sort((a,b)=>b.age-a.age)[0];
+      const oldest = rows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).map(r=>({req:r.requirement, age:realDaysOpenFor(r)})).filter(r=>r.age!=null).sort((a,b)=>b.age-a.age)[0];
       if(oldest && oldest.age>0) items.push({cls: oldest.age>=60?"bad":"warn", text:`Longest-open: <b>${oldest.req}</b>, open for <b>${oldest.age}</b> calendar day(s) since its recruiting start date.`});
     }
     insightsEl.innerHTML = items.map(i=>`<div class="insight ${i.cls}"><div class="dot"></div><div>${i.text}</div></div>`).join('');
@@ -1986,7 +2010,7 @@ function renderUnifiedCritical(){
       chartWrap.style.height = Math.max(120, chartRows.length*34) + 'px';
       charts.unifiedCriticalChart = new Chart(chartCanvas, {
         type:'bar',
-        data:{labels:chartRows.map(r=>r.req), datasets:[{data:chartRows.map(r=>r.age), backgroundColor:chartRows.map(r=>/filled|closed|complete/i.test(r.status) ? '#22C55E' : r.age>=60 ? '#EF4444' : r.age>=30 ? '#F59E0B' : '#94A3B8'), borderRadius:6}]},
+        data:{labels:chartRows.map(r=>r.req), datasets:[{data:chartRows.map(r=>r.age), backgroundColor:chartRows.map(r=>/filled|closed|complete|joined/i.test(r.status) ? '#22C55E' : r.age>=60 ? '#EF4444' : r.age>=30 ? '#F59E0B' : '#94A3B8'), borderRadius:6}]},
         options:{indexAxis:'y', plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=> ctx.raw+' day(s) since recruiting start'}}}, scales:{x:{beginAtZero:true, grid:{color:'rgba(15,76,129,0.06)'}, title:{display:true, text:'Days since recruiting started'}}, y:{grid:{display:false}, ticks:{font:{size:10.5}}}}}
       });
     } else {
@@ -2016,9 +2040,9 @@ function renderCompanyWideCriticalKpis(){
   const allRows = [...serviceRows, ...salesRows];
 
   const total = allRows.length;
-  const pending = allRows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
-  const filled = allRows.filter(r=>/filled|closed|complete/i.test(r.status)).length;
-  const ages = allRows.filter(r=>!/filled|closed|complete/i.test(r.status)).map(r=>realDaysOpenFor(r)).filter(v=>v!=null);
+  const pending = allRows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).length;
+  const filled = allRows.filter(r=>/filled|closed|complete|joined/i.test(r.status)).length;
+  const ages = allRows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).map(r=>realDaysOpenFor(r)).filter(v=>v!=null);
   const longest = ages.length ? Math.max(...ages) : 0;
 
   const el = document.getElementById('companyWideCriticalKpiGrid');
@@ -2049,7 +2073,7 @@ function renderCompanyWideCriticalKpis(){
         const da = realDaysOpenFor(a), db = realDaysOpenFor(b);
         return (db==null?-1:db) - (da==null?-1:da);
       }).forEach(r=>{
-        const tagClass = /filled|closed|complete/i.test(r.status) ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
+        const tagClass = /filled|closed|complete|joined/i.test(r.status) ? 'tag-good' : /progress|shortlist|interview/i.test(r.status) ? 'tag-warn' : 'tag-bad';
         const daysOpen = realDaysOpenFor(r);
         const daysTag = daysOpen==null ? '—' : `<span class="kpi-tag ${daysOpen>=60?'tag-bad':daysOpen>=30?'tag-warn':'tag-info'}">${daysOpen} day(s)</span>`;
         const sourceTag = r.source==='Service' ? `<span class="kpi-tag tag-info">Service</span>` : `<span class="kpi-tag" style="background:rgba(245,158,11,0.12);color:#B45309;">Sales</span>`;
@@ -2101,7 +2125,7 @@ function renderSingleOverview(ctx){
       if(cnt<=0) return;
       const status = (r[k+"_status"]||'').trim();
       if(/new team/i.test(status)) newTeamSum += cnt;
-      else if(/filled|closed|complete/i.test(status)) filledStatusSum += cnt;
+      else if(/filled|closed|complete|joined/i.test(status)) filledStatusSum += cnt;
       else if(/progress|shortlist|interview|will join|planned/i.test(status)) inProgressSum += cnt;
       else pendingSum += cnt;
     });
@@ -2186,7 +2210,7 @@ function renderSingleOverview(ctx){
       const status = (r[k+"_status"]||'').trim();
       let bucket, tagClass, displayStatus;
       if(/new team/i.test(status)){ bucket=3; tagClass='tag-info'; displayStatus=status; }
-      else if(/filled|closed|complete/i.test(status)){ bucket=2; tagClass='tag-good'; displayStatus=status||'Filled'; }
+      else if(/filled|closed|complete|joined/i.test(status)){ bucket=2; tagClass='tag-good'; displayStatus=status||'Filled'; }
       else if(/progress|shortlist|interview|will join|planned/i.test(status)){ bucket=0; tagClass='tag-warn'; displayStatus=status; }
       else { bucket=1; tagClass='tag-bad'; displayStatus=status||'Pending'; }
       statusRows.push({branch:r.branch, role:ctx.labels[k]||k, count:cnt, status:displayStatus, tagClass, bucket});
@@ -2265,7 +2289,7 @@ function getCriticalOpenCount(logArr, currentArr){
     const latest = dts[dts.length-1];
     rows = logArr.filter(r=>r.date===latest);
   }
-  return rows.filter(r=>!/filled|closed|complete/i.test(r.status)).length;
+  return rows.filter(r=>!/filled|closed|complete|joined/i.test(r.status)).length;
 }
 
 function renderCompanyOverview(){
