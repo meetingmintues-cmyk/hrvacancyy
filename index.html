@@ -1028,7 +1028,7 @@ function parseCurrentJSON(arr, roles, headerMap, branchKey){
 
 
 let LAST_FETCH_TIME = 0;
-async function tryLiveFetch(){
+async function tryLiveFetch(skipCompanyRender){
   LAST_FETCH_TIME = Date.now();
   const btn = document.getElementById('refreshBtn');
   const statusText = document.getElementById('statusText');
@@ -1101,7 +1101,7 @@ async function tryLiveFetch(){
     if(FLAT_DEPTS.includes(ACTIVE_DEPARTMENT)){ renderFlatDepartment(document.getElementById('flatTableSearch') ? document.getElementById('flatTableSearch').value : ''); }
     renderUnifiedCritical();
     renderCompanyWideCriticalKpis();
-    renderCompanyOverview();
+    if(!skipCompanyRender) renderCompanyOverview();
   }catch(e){
     statusText.textContent = "Showing last verified data (" + e.message + ")";
     dot.style.background = "#F59E0B";
@@ -1261,18 +1261,55 @@ function computeVacancyInstances(ctx){
 // rather than from when our snapshot history first happened to detect the vacancy.
 // Movement Tracking intentionally keeps using computeVacancyInstances() directly (unchanged),
 // since that's the snapshot-based fill/status history the user wants preserved as-is.
-function getAgingInstances(ctx){
-  const fifoInstances = computeVacancyInstances(ctx);
-  if(!ctx.reportedDates || !Object.keys(ctx.reportedDates).length) return fifoInstances;
+// For departments with real per-role status text and reported dates (Onroad, Beegains, True Value,
+// Other Vacancy in all its forms), build instances DIRECTLY from the latest snapshot's real data —
+// rather than inferring history by diffing counts day-over-day across the whole snapshot log.
+// The day-over-day FIFO approach (computeVacancyInstances) depends on a role's designation name and
+// count lining up EXACTLY the same way across every single historical snapshot; any drift at all
+// (a slightly renamed designation, a miscounted row on one particular day) reads as "closed, then a
+// new one opened" — and across many accumulated days this can silently multiply into a wildly
+// inflated instance count, and can make a role the sheet says is "Filled" still show as open, since
+// the count column and the status text aren't required to move in lockstep.
+// This function sidesteps all of that: it trusts the CURRENT status text and CURRENT real reported
+// date directly, so it can't accumulate historical drift no matter how many snapshots exist.
+function getStatusBasedInstances(ctx){
+  if(!ctx.reportedDates || !Object.keys(ctx.reportedDates).length) return null; // not applicable — caller should fall back to FIFO
+  const dates = getDates(ctx);
+  const latestDate = dates[dates.length-1];
+  if(!latestDate) return [];
+  const branches = allBranchesFor(ctx).filter(b => !ctx.selectedBranches || ctx.selectedBranches.has(b));
+  const roles = getFilteredRoles(ctx);
+  const latestRows = ctx.log.filter(r=>r.date===latestDate && branches.includes(r.branch));
   const now = new Date();
-  return fifoInstances.map(inst=>{
-    if(inst.status !== 'open') return inst; // only reinterpret still-open instances
-    const realDate = ctx.reportedDates[inst.branch] && ctx.reportedDates[inst.branch][inst.role];
-    if(!realDate) return inst; // no real date on record for this branch+role — keep FIFO estimate
-    const openedDateStr = realDate.toISOString().slice(0,19).replace('T',' ');
-    const hours = hoursBetween(realDate, now);
-    return {...inst, openedDate: openedDateStr, hours, daysLabel: formatDuration(hours)};
+  const latestDt = toDateObj(latestDate);
+  const instances = [];
+  latestRows.forEach(r=>{
+    roles.forEach(role=>{
+      const count = r[role]||0;
+      if(count<=0) return;
+      const status = (r[role+"_status"]||'').trim();
+      const isFilled = /filled|closed|complete/i.test(status);
+      const realDate = ctx.reportedDates[r.branch] && ctx.reportedDates[r.branch][role];
+      const openedDt = realDate || latestDt;
+      const openedDateStr = openedDt.toISOString().slice(0,19).replace('T',' ');
+      for(let i=0;i<count;i++){
+        if(isFilled){
+          const hours = hoursBetween(openedDt, latestDt);
+          instances.push({branch:r.branch, role, openedDate:openedDateStr, filledDate:latestDate, status:'filled', hours, daysLabel:formatDuration(hours)});
+        } else {
+          const hours = hoursBetween(openedDt, now);
+          instances.push({branch:r.branch, role, openedDate:openedDateStr, filledDate:null, status:'open', hours, daysLabel:formatDuration(hours)});
+        }
+      }
+    });
   });
+  return instances.sort((a,b)=> dateSortValue(b.openedDate) - dateSortValue(a.openedDate));
+}
+
+function getAgingInstances(ctx){
+  const statusBased = getStatusBasedInstances(ctx);
+  if(statusBased !== null) return statusBased;
+  return computeVacancyInstances(ctx); // departments without real per-row status/date data (Arena, Nexa) — unchanged
 }
 
 function computeStalled(ctx){
@@ -1572,7 +1609,7 @@ function renderStalledTable(ctx){
 
 function renderTracking(ctx, filterText=""){
   const label = datasetLabel(ctx);
-  const instances = computeVacancyInstances(ctx);
+  const instances = getAgingInstances(ctx);
   const filled = instances.filter(i=>i.status==='filled');
   const open = instances.filter(i=>i.status==='open');
   const avgFillHours = filled.length ? (filled.reduce((s,i)=>s+i.hours,0)/filled.length) : null;
@@ -2585,7 +2622,7 @@ document.querySelectorAll('.nav-item').forEach(item=>{
 document.getElementById('tableSearch').addEventListener('input', e=>buildFullTable(getCtxByKey(ACTIVE_DATASET), e.target.value));
 document.getElementById('trackingSearch').addEventListener('input', e=>renderTracking(getCtxByKey(ACTIVE_DATASET), e.target.value));
 document.getElementById('flatTableSearch').addEventListener('input', e=>renderFlatDepartment(e.target.value));
-document.getElementById('refreshBtn').addEventListener('click', tryLiveFetch);
+document.getElementById('refreshBtn').addEventListener('click', refreshAllLiveData);
 
 const SERVICE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1LrMWKdjoIPIPRmRZYk7KhMb_X1nn0qFCiNl3Q6QOQhI/preview";
 const SALES_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1de8v7f54yVs9Tzz7co9lY7-mz1y4Llwok7vd7KqySho/preview";
@@ -2612,7 +2649,7 @@ document.getElementById('viewSheetBtn').addEventListener('click', ()=>{
 let autoRefreshTimer = null;
 function startAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(tryLiveFetch, 5*60*1000); // every 5 minutes
+  autoRefreshTimer = setInterval(refreshAllLiveData, 5*60*1000); // every 5 minutes
 }
 function stopAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
@@ -2623,7 +2660,7 @@ document.addEventListener('visibilitychange', function(){
   // "View Sheet" (a new tab) backgrounds this one. Catch up immediately on return,
   // instead of waiting for a possibly-stalled interval timer.
   if(document.visibilityState === 'visible' && (Date.now() - LAST_FETCH_TIME) > 30000){
-    tryLiveFetch();
+    refreshAllLiveData();
   }
 });
 document.getElementById('autoRefreshToggle').addEventListener('change', e=>{
@@ -2641,7 +2678,7 @@ renderCompanyOverview();
 renderCriticalSourceSwitch();
 renderUnifiedCritical();
 renderCompanyWideCriticalKpis();
-tryLiveFetch();
+refreshAllLiveData();
 startAutoRefresh();
 
 /*************************************************
@@ -2649,7 +2686,7 @@ startAutoRefresh();
  * Real snapshot-based FIFO tracking, via their own Apps Script Web App.
  * Shown separately in the sidebar since it's a different vertical.
  *************************************************/
-function loadOtherVerticalsData(){
+function loadOtherVerticalsData(skipCompanyRender){
   try{
     return jsonpFetch(OTHER_VERTICALS_APPS_SCRIPT_URL)
       .then(data => {
@@ -2660,7 +2697,7 @@ function loadOtherVerticalsData(){
           if(OTHER_VERTICAL_DEPTS.includes(ACTIVE_DEPARTMENT)){
             renderRichSingleDept(getCtxByKey(ACTIVE_DEPARTMENT));
           }
-          renderCompanyOverview();
+          if(!skipCompanyRender) renderCompanyOverview();
         }catch(innerErr){
           console.warn("Other Verticals: failed to apply data (dashboard otherwise unaffected):", innerErr);
         }
@@ -2672,7 +2709,14 @@ function loadOtherVerticalsData(){
   }
 }
 
-setTimeout(loadOtherVerticalsData, 50); // deliberately deferred and isolated from the main render pipeline
+// Single coordinated entry point for ALL live data — fetches Service+Sales and Onroad+Beegains
+// in true parallel, and paints company-wide summaries (Executive Overview, Critical Positions
+// totals) exactly ONCE after everything has settled. This is what fixes numbers visibly
+// "counting up" on load — without this, each source painted the screen separately as it arrived.
+async function refreshAllLiveData(){
+  await Promise.allSettled([tryLiveFetch(true), loadOtherVerticalsData(true)]);
+  renderCompanyOverview();
+}
 
 
 </script>
